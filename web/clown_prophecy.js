@@ -4,7 +4,7 @@
 //  decrement              -> the counter goes down by 1 each time you hit run (repair walks back)
 //  fixed                  -> never changes
 //  use_classic_counter off -> the shot is worked out in Python (saved latents + 1); the box just shows it
-// After an accepted run the sampler's 'accept' switch goes back off.
+// The sampler's 'accept' switch is never changed: on stays on.
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
@@ -163,8 +163,6 @@ app.registerExtension({
                 onExecuted?.apply(this, arguments);
                 const state = output?.prophecy?.[0];
                 if (!state?.accepted) return;
-                const acc = this.widgets?.find((x) => x.name === "accept");
-                if (acc) acc.value = false;
                 const counter = counterFor(this);
                 const mode = counter?.widgets?.find((x) => x.name === "shot_counter")?.value;
                 if (mode === "increment after accept") bump(counter);
