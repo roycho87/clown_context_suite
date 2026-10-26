@@ -2,6 +2,10 @@
 
 ComfyUI nodes for chaining MiniMax H3 clips without the quality slowly falling apart.
 
+## Credits
+
+Clown Context Suite stands on the work of **seitanism** and **nikodemon**, who came before it. I'm just building off their work, so all credit to them for laying the groundwork.
+
 ## The problem
 
 When you chain H3 clips, each new clip starts from the tail of the last one. You tell the model where to start, but never where to end. Detail is lost a little in every clip, and because each clip starts from the one before, the loss stacks up over the chain.
