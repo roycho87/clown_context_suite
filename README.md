@@ -23,7 +23,7 @@ Do this every two shots or so and the quality never drops far enough to notice.
 | **Clown Context** | Holds the previous shot's last frames (and audio) at the start of this shot. |
 | **Clown Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug Clown Prophecy's ending into `next_shot`. |
 | **Clown Prophecy Sampler** | Renders the clean ending for the shot, before the shot exists. |
-| **Clown Prophecy Prompt** | How the ending is worded: Ollama rewrites the prompt so it only describes the ending, your own text, or the shot prompt as is. |
+| **Clown Prophecy Prompt** | How the ending is worded: an LLM (Ollama, LM Studio…) rewrites the prompt so it only describes the ending, your own text, or the shot prompt as is. |
 | **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. |
 
@@ -87,7 +87,7 @@ Video Settings is set to 8-second shots (192 frames), Clown Context to 39 / drop
 - [ComfyMath](https://github.com/evanspearman/ComfyMath)
 - Load Text Batch From Dir, Load Audio Batch From Dir, LoadImageCrop, VideoResolutionNode, and the MiniMax low-VRAM nodes
 
-Clown Prophecy Prompt in `ollama` mode needs [Ollama](https://ollama.com) running locally.
+Clown Prophecy Prompt in `ollama` mode needs a local LLM server: [Ollama](https://ollama.com) (`http://127.0.0.1:11434`), [LM Studio](https://lmstudio.ai) (`http://127.0.0.1:1234`), or any other OpenAI-compatible server. Put its address in `ollama_url`.
 
 ## Install
 

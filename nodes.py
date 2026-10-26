@@ -538,27 +538,66 @@ def _replace_sections(prompt, summary, detailed, who):
     return out, notes
 
 
+def _llm_json(text):
+    """First JSON object in an LLM reply. Thinking blocks and code fences are skipped."""
+    import json as _json
+    text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S | re.I)
+    text = re.sub(r"^.*?</think>", "", text, flags=re.S | re.I)  # reply that starts mid-thought
+    dec = _json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            obj, _ = dec.raw_decode(text, m.start())
+        except ValueError:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    return None
+
+
 def _ollama(url, model, system, prompt, seed, who):
+    """Ask an LLM server for the ending's summary and detailed_description.
+
+    Uses the OpenAI-compatible /v1/chat/completions endpoint, which Ollama, LM Studio and most other local
+    servers all serve. `url` is the server base (http://127.0.0.1:11434 for Ollama, http://127.0.0.1:1234 for
+    LM Studio); /v1 is added if it's missing.
+    """
     import json as _json
     import urllib.request
-    body = {"model": model, "system": system, "prompt": prompt, "stream": False, "format": "json",
-            "think": False, "options": {"temperature": 0.7, "seed": int(seed) % (2 ** 31)}}
-    req = urllib.request.Request(url.rstrip("/") + "/api/generate", data=_json.dumps(body).encode("utf-8"),
+    import urllib.error
+    base = url.strip().rstrip("/")
+    if not base.endswith("/v1"):
+        base += "/v1"
+    endpoint = base + "/chat/completions"
+    body = {"model": model,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": prompt}],
+            "temperature": 0.7,
+            "seed": int(seed) % (2 ** 31),
+            "stream": False}
+    req = urllib.request.Request(endpoint, data=_json.dumps(body).encode("utf-8"),
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=600) as r:
             resp = _json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8", "replace")[:300]
+        except Exception:
+            pass
+        raise RuntimeError(f"{who}: the LLM server at {endpoint} refused the request ({e.code}) for model '{model}'. "
+                           f"Is that model loaded? {detail}")
     except Exception as e:
-        raise RuntimeError(f"{who}: couldn't reach Ollama at {url} with model '{model}' ({e}). "
-                           f"Is Ollama running (ollama serve) and is the model pulled (ollama pull {model})?")
-    text = resp.get("response", "")
+        raise RuntimeError(f"{who}: couldn't reach an LLM server at {endpoint} with model '{model}' ({e}). "
+                           f"Ollama: run 'ollama serve' and 'ollama pull {model}'. "
+                           f"LM Studio: start the local server and load the model.")
     try:
-        data = _json.loads(text)
-    except Exception:
-        m = re.search(r"\{.*\}", text, re.S)
-        if not m:
-            raise RuntimeError(f"{who}: Ollama didn't return JSON. It said: {text[:400]}")
-        data = _json.loads(m.group(0))
+        text = resp["choices"][0]["message"].get("content") or ""
+    except (KeyError, IndexError, TypeError, AttributeError):
+        raise RuntimeError(f"{who}: unexpected reply from {endpoint}: {str(resp)[:400]}")
+    data = _llm_json(text)
+    if data is None:
+        raise RuntimeError(f"{who}: the LLM didn't return JSON. It said: {text[:400]}")
     return str(data.get("summary", "")), str(data.get("detailed_description", ""))
 
 
@@ -718,7 +757,7 @@ class H3ClownProphecyPrompt:
     RETURN_TYPES = ("PROPHECY_PROMPT",)
     RETURN_NAMES = ("prophecy_prompt",)
     FUNCTION = "build"
-    DESCRIPTION = ("Plug into the Clown Prophecy Sampler. ollama: Ollama rewrites the prompt's summary and "
+    DESCRIPTION = ("Plug into the Clown Prophecy Sampler. ollama: an LLM (Ollama, LM Studio or any OpenAI-compatible server) rewrites the prompt's summary and "
                    "detailed_description so they describe only the ending. manual: your two boxes replace them. "
                    "as is: the shot prompt is used unchanged.")
 
@@ -728,8 +767,10 @@ class H3ClownProphecyPrompt:
             "required": {
                 "prompt": ("STRING", {"forceInput": True, "tooltip": "The same prompt that goes into Reference To Video."}),
                 "prompt_mode": (["ollama", "manual", "as is"], {"default": "ollama"}),
-                "ollama_model": ("STRING", {"default": "qwen3.5:4b"}),
-                "ollama_url": ("STRING", {"default": "http://127.0.0.1:11434"}),
+                "ollama_model": ("STRING", {"default": "qwen3.8:27b"}),
+                "ollama_url": ("STRING", {"default": "http://127.0.0.1:11434",
+                                          "tooltip": "Any OpenAI-compatible LLM server: Ollama (http://127.0.0.1:11434), "
+                                                     "LM Studio (http://127.0.0.1:1234), and others. /v1 is added if missing."}),
                 "manual_summary": ("STRING", {"default": "", "multiline": True}),
                 "manual_detailed_description": ("STRING", {"default": "", "multiline": True}),
             }
