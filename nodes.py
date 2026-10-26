@@ -680,6 +680,37 @@ class H3ClownForceAudio:
         return (_pack(latent, parts, masks, True, who),)
 
 
+def _fingerprint(*things):
+    """Short hash of everything that goes into a render: tensors by their exact values, everything else by value."""
+    import hashlib
+    h = hashlib.sha1()
+
+    def feed(x):
+        if NestedTensor is not None and isinstance(x, NestedTensor):
+            for part in _split(x):
+                feed(part)
+        elif isinstance(x, torch.Tensor):
+            t = x.detach().cpu().contiguous()
+            h.update(f"T{tuple(t.shape)}{t.dtype}".encode())
+            h.update(t.float().numpy().tobytes())
+        elif isinstance(x, dict):
+            for k in sorted(x, key=str):
+                h.update(f"K{k}".encode())
+                feed(x[k])
+        elif isinstance(x, (list, tuple)):
+            h.update(f"L{len(x)}".encode())
+            for v in x:
+                feed(v)
+        elif x is None or isinstance(x, (str, int, float, bool)):
+            h.update(f"V{x!r}".encode())
+        else:
+            h.update(f"O{type(x).__name__}".encode())
+
+    for t in things:
+        feed(t)
+    return h.hexdigest()[:16]
+
+
 class H3ClownProphecyPrompt:
     """How the Prophecy Sampler words the ending: Ollama rewrite, your own text, or the shot prompt as is."""
 
@@ -910,12 +941,28 @@ class H3ClownProphecySampler:
         secs = F / FPS
         ui_state = lambda acc: {"prophecy": [{"accepted": bool(acc), "shot": shot}]}
 
-        # ---------------- accepted: reuse the saved candidate exactly
-        src = None
+        # fingerprints: a saved file is only reused if everything that made it is unchanged
+        pp_key = {k: pp.get(k) for k in ("mode", "prompt", "summary", "detailed", "ollama_model")}
+        audio_key = _fingerprint("audio-v1", conditioning, int(seed), shot_frames, sigmas)
+        ending_key = _fingerprint("ending-v1", conditioning, pp_key, int(seed), F, width, height, shot_frames,
+                                  sigmas, lat_audio if forced else None)
+
+        # ---------------- accepted: reuse the saved candidate exactly, if it was made from these same inputs
+        src = d = None
+        stale = []
         if accept:
-            src = cand_p if os.path.exists(cand_p) else (sel_p if os.path.exists(sel_p) else None)
+            for p in (cand_p, sel_p):
+                if not os.path.exists(p):
+                    continue
+                dd = torch.load(p, map_location="cpu", weights_only=False)
+                if dd.get("key") == ending_key:
+                    src, d = p, dd
+                    break
+                stale.append(os.path.basename(p))
+        if stale:
+            print(f"[{who}] shot {shot}: saved ending {', '.join(stale)} was made from a different prompt, seed, size "
+                  f"or sound - rendering a new one.")
         if src is not None:
-            d = torch.load(src, map_location="cpu", weights_only=False)
             if src == cand_p:
                 torch.save(d, sel_p)
                 with open(os.path.join(base, f"shot_{shot:04d}_prompt.txt"), "w", encoding="utf-8") as f:
@@ -923,7 +970,8 @@ class H3ClownProphecySampler:
             samples = NestedTensor(tuple(d["parts"])) if (NestedTensor is not None and len(d["parts"]) > 1) else d["parts"][0]
             preview = d["preview"].float() / 255.0
             shot_audio = d.get("shot_audio") or audio
-            report = (f"{who}: shot {shot} ACCEPTED (seed {d['seed']}, {F} frames). Using the saved ending exactly; "
+            report = (f"{who}: shot {shot} ACCEPTED (seed {d['seed']}, {F} frames). Using the saved ending exactly "
+                      f"(same prompt, seed and size as when it was rendered); "
                       f"the rest of the workflow runs. Saved as {sel_p}.")
             print(report)
             return {"ui": ui_state(True), "result": ({"samples": samples}, preview, d["prompt"], shot_audio, report) + audio_out(shot_audio)}
@@ -949,17 +997,19 @@ class H3ClownProphecySampler:
 
         # ---------------- the shot's audio: given, or pre-rendered with a tiny H3 render
         if audio is None:
-            if os.path.exists(audio_p):
-                shot_audio = torch.load(audio_p, map_location="cpu", weights_only=False)
-                anote = "pre-rendered shot audio reused"
+            saved = torch.load(audio_p, map_location="cpu", weights_only=False) if os.path.exists(audio_p) else None
+            if isinstance(saved, dict) and saved.get("key") == audio_key:
+                shot_audio = saved["audio"]
+                anote = "pre-rendered shot audio reused (same prompt and seed)"
             else:
                 lat_a, _ = _empty_av_latent(64, 64, shot_frames)
                 out_a = self._sample(model, conditioning, lat_a, sampler, sigmas, seed)
                 parts_a = _split(out_a["samples"])
                 wav = audio_vae.decode(parts_a[_audio_index(parts_a)]).movedim(-1, 1)
                 shot_audio = {"waveform": wav.cpu(), "sample_rate": int(getattr(audio_vae, "audio_sample_rate", 44100))}
-                torch.save(shot_audio, audio_p)
-                anote = "shot audio pre-rendered with a 64x64 H3 render and saved"
+                torch.save({"key": audio_key, "audio": shot_audio}, audio_p)
+                anote = ("shot audio pre-rendered with a 64x64 H3 render and saved"
+                         + (" (the saved one was from a different prompt or seed)" if saved is not None else ""))
         else:
             shot_audio = audio
             anote = "the latent's own (forced) sound used"
@@ -976,18 +1026,18 @@ class H3ClownProphecySampler:
         out = self._sample(model, cond, lat, sampler, sigmas, seed)
         preview = self._decode_video(vae, out, who)
         parts = [p.cpu() for p in _split(out["samples"])]
-        torch.save({"parts": parts, "prompt": new_prompt, "seed": int(seed), "frames": F,
+        torch.save({"key": ending_key, "parts": parts, "prompt": new_prompt, "seed": int(seed), "frames": F,
                     "preview": (preview * 255).round().to(torch.uint8), "shot_audio": shot_audio}, cand_p)
         report = (f"{who}: shot {shot} CANDIDATE rendered (seed {seed}, {F} frames = last {secs:.2f} s of a "
                   f"{shot_frames}-frame {width}x{height} shot; prompt: {mode}; {anote}). The rest of the workflow is "
                   f"stopped. Run again to reroll, or turn 'accept' on and run to use this one."
                   + ("".join("\n  note: " + n for n in notes)))
         if accept:
-            # accept was on but nothing was rendered yet: take this render as accepted
+            # accept was on but there was no matching saved ending: take this render as accepted
             torch.save(torch.load(cand_p, map_location="cpu", weights_only=False), sel_p)
             with open(os.path.join(base, f"shot_{shot:04d}_prompt.txt"), "w", encoding="utf-8") as f:
                 f.write(new_prompt)
-            report = (f"{who}: shot {shot} rendered and ACCEPTED straight away (accept was on, no candidate yet; seed {seed}, "
+            report = (f"{who}: shot {shot} rendered and ACCEPTED straight away (accept was on, no matching saved ending; seed {seed}, "
                       f"{F} frames; prompt: {mode}; {anote}). The rest of the workflow runs. Saved as {sel_p}.")
             print(report)
             return {"ui": ui_state(True), "result": ({"samples": out["samples"]}, preview, new_prompt, shot_audio, report) + audio_out(shot_audio)}
