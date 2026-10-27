@@ -164,7 +164,7 @@ Rules that work:
 
 ### Clown Chain example
 
-`example_workflows/clown_prophecy_clown_chain_example.json` is a normal H3 Motion Context-style chain with the Clown nodes in, driven by the **Clown Chain** buttons. It only uses the Load / Save Latent nodes that Motion Context and Motion Context MultiRef both have, so it opens with no missing nodes whichever one you installed.
+`example_workflows/sane_person_example.json` is a normal H3 Motion Context-style chain with the Clown nodes in, driven by the **Clown Chain** buttons. It only uses the Load / Save Latent nodes that Motion Context and Motion Context MultiRef both have, so it opens with no missing nodes whichever one you installed.
 
 1. Load your reference pictures and write the prompt in the **H3 Prompt IDE** node.
 2. Press **Chain** (or **Run/Re-roll** for one shot). Don't use ComfyUI's Run button.
@@ -174,7 +174,7 @@ Keep Load Latent, Save Latent and Clown Chain inside their group.
 
 ### Vlog example
 
-`example_workflows/clown_context_suite_example.json` makes a talking vlog from pre-split audio clips and one prompt file per shot.
+`example_workflows/insane_example.json` makes a talking vlog from pre-split audio clips and one prompt file per shot.
 
 1. Set the prompt folder in **Load Text Batch From Dir** and the audio folder in **Shot Audio (one file per shot)**. One `.txt` and one audio file per shot, numbered in order.
 2. Load your two reference pictures.
