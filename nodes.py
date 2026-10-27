@@ -504,35 +504,144 @@ def _video_audio(latent, who):
 
 
 # --------------------------------------------------------------------------- Clown Prophecy Sampler
-PROPHECY_LLM_RULES = """You edit MiniMax H3 video prompts. You get a full prompt for one shot of a continuous video.
-A separate, short clip will be generated that shows ONLY THE LAST {secs:.2f} SECONDS of this shot.
-Rewrite two sections so they describe only those final {secs:.2f} seconds, as the natural ending of what the shot describes:
+PROPHECY_LLM_RULES = """You edit MiniMax H3 video prompts. A separate short clip will be generated that shows ONLY THE LAST
+{secs:.2f} SECONDS of the video described by the full prompt. You get the full prompt for context, then the part of its
+detailed_description that falls in those last {secs:.2f} seconds, already cut out and renumbered for the short clip.
 
-1. summary: one short English paragraph. Keep the same square-bracketed task-type prefix as the original
-   (for example [keyframe completion + reference generation]). Say it is the final {secs:.2f} seconds.
-2. detailed_description: keep the original opening style sentence(s) before [Shot 1], then one [Shot 1] that
-   describes, in order, exactly what is seen and heard in those final {secs:.2f} seconds: the subject's pose,
-   limbs, head and position, the camera, and where everything ends up. No timestamps, no new shots or cuts.
+Rewrite two sections for the short clip:
+1. summary: one short English paragraph about the last {secs:.2f} seconds only. Keep the same square-bracketed
+   task-type prefix as the original (for example [reference generation]).
+2. detailed_description: start from the cut-out part you were given. Keep its opening style sentence(s) and its shot
+   labels and timestamps exactly as given (they are already correct for the short clip). Rewrite each shot so it shows
+   how that action ENDS: where the subjects, poses, expressions, camera and framing are during the last
+   {secs:.2f} seconds. Do not go back to how the video or the shot started. Keep the same (VISUAL) / (SOUND) style
+   if the original uses it. No new shots, cuts or timestamps.
 
 Rules: write in English. Keep every reference label exactly as written (<Subject 1>, <Picture 1>, <Video 1>,
-<Audio 1> and so on) and keep the same subject, outfit, setting, lighting and camera. Describe only visible
-and audible things. Do not change anything else.
+<Audio 1> and so on) and keep the same subjects, outfits, setting, lighting and camera style. Describe only visible
+and audible things.
 Answer with JSON only: {{"summary": "...", "detailed_description": "..."}}"""
 
-_SUM_RE = re.compile(r"(summary:[ \t]*\r?\n)(.*?)(\r?\n[ \t]*\r?\n[ \t]*retention_analysis:)", re.S)
-_DET_RE = re.compile(r"(detailed_description:[ \t]*\r?\n)(.*?)(\r?\n[ \t]*\r?\n[ \t]*overall_soundscape:)", re.S)
+_SECTION_NAMES = ("subject_definitions", "summary", "retention_analysis", "detailed_description",
+                  "overall_soundscape", "non_diegetic_music")
+_SECTION_RE = re.compile(r"(?mi)^[ \t]*(" + "|".join(_SECTION_NAMES) + r")[ \t]*:[ \t]*")
+_SHOT_RE = re.compile(r"\[Shot\s*(\d+)\]", re.I)
+_TIME_RE = re.compile(r"^\s*(?:at[ \t]+)?(\d{1,2}):(\d{2}(?:\.\d+)?)[ \t]*,?", re.I)
 
 
-def _replace_sections(prompt, summary, detailed, who):
+def _sections(prompt):
+    """{name: (content_start, content_end)} for every known section header, in any spacing."""
+    hits = list(_SECTION_RE.finditer(prompt))
+    out = {}
+    for i, m in enumerate(hits):
+        end = hits[i + 1].start() if i + 1 < len(hits) else len(prompt)
+        out.setdefault(m.group(1).lower(), (m.end(), end))
+    return out
+
+
+def _get_section(prompt, name):
+    sec = _sections(prompt).get(name)
+    return prompt[sec[0]:sec[1]].strip() if sec else None
+
+
+def _set_section(prompt, name, text):
+    sec = _sections(prompt).get(name)
+    if not sec:
+        return prompt, False
+    start, end = sec
+    tail = prompt[end:]
+    sep = "\n\n" if tail.strip() else "\n"
+    return prompt[:start].rstrip(" \t") + "\n" + text.strip() + sep + tail.lstrip("\r\n"), True
+
+
+def _parse_shots(detailed):
+    """-> (preamble, [(number, start_seconds or None, body)]). body is the text after the label and timestamp."""
+    marks = list(_SHOT_RE.finditer(detailed or ""))
+    if not marks:
+        return (detailed or "").strip(), []
+    shots = []
+    for i, m in enumerate(marks):
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(detailed)
+        body = detailed[m.end():end]
+        t = _TIME_RE.match(body)
+        start = None
+        if t:
+            start = int(t.group(1)) * 60 + float(t.group(2))
+            body = body[t.end():]
+        shots.append((int(m.group(1)), start, body.strip()))
+    if shots and shots[0][1] is None:
+        shots[0] = (shots[0][0], 0.0, shots[0][2])
+    return detailed[:marks[0].start()].strip(), shots
+
+
+def _ending_slice(detailed, total_s, ending_s):
+    """Cut the shots that fall in the last ending_s seconds out of detailed_description and renumber them.
+
+    -> (sliced_text, {old_shot_number: new_shot_number}, note)."""
+    pre, shots = _parse_shots(detailed)
+    if not shots:
+        return (detailed or "").strip(), {}, "no [Shot N] labels - whole description passed on"
+    w0 = max(0.0, total_s - ending_s)
+    if any(st is None for _, st, _ in shots[1:]):
+        keep = [shots[-1]]
+        note = "some shots have no timestamp - using the last shot"
+    else:
+        keep = []
+        for i, (num, st, body) in enumerate(shots):
+            nxt = shots[i + 1][1] if i + 1 < len(shots) else total_s
+            if nxt > w0 + 1e-6 and st < total_s - 1e-6:
+                keep.append((num, st, body))
+        if not keep:
+            keep = [shots[-1]]
+        note = (f"ending = {w0:.2f}-{total_s:.2f} s, inside original shot(s) "
+                + ", ".join(str(n) for n, _, _ in keep))
+    mapping, blocks = {}, []
+    for k, (num, st, body) in enumerate(keep, start=1):
+        mapping[num] = k
+        if k == 1:
+            head = "[Shot 1]"
+        else:
+            rel = max(0.0, (st or 0.0) - w0)
+            head = f"[Shot {k}] At {int(rel // 60):02d}:{rel % 60:06.3f},"
+        blocks.append(head + ("\n" if body.startswith("(") else " ") + body)
+    return ((pre + "\n\n") if pre else "") + "\n\n".join(blocks), mapping, note
+
+
+def _fix_retention(prompt, mapping):
+    """Point retention_analysis shot references at the ending's shots: renumber, drop shots that aren't in it."""
+    ret = _get_section(prompt, "retention_analysis")
+    det = _get_section(prompt, "detailed_description") or ""
+    if ret is None:
+        return prompt
+    present = sorted({int(n) for n in _SHOT_RE.findall(det)}) or [1]
+
+    def fix_list(m):
+        olds = [int(n) for n in _SHOT_RE.findall(m.group(0))]
+        news = []
+        for o in olds:
+            n = mapping.get(o) if mapping else (o if o in present else None)
+            if n is not None and n in present and n not in news:
+                news.append(n)
+        if not news:
+            news = present
+        return ", ".join(f"[Shot {n}]" for n in sorted(news))
+
+    new_ret = re.sub(r"\[Shot\s*\d+\](?:\s*,\s*\[Shot\s*\d+\])*", fix_list, ret, flags=re.I)
+    return _set_section(prompt, "retention_analysis", new_ret)[0]
+
+
+def _replace_sections(prompt, summary, detailed, who, mapping=None):
     out, notes = prompt, []
     if summary and summary.strip():
-        new, n = _SUM_RE.subn(lambda m: m.group(1) + summary.strip() + m.group(3), out, count=1)
-        if n: out = new
-        else: notes.append("no 'summary:' section found - summary not replaced")
+        out, ok = _set_section(out, "summary", summary)
+        if not ok:
+            notes.append("no 'summary:' section found - summary not replaced")
     if detailed and detailed.strip():
-        new, n = _DET_RE.subn(lambda m: m.group(1) + detailed.strip() + m.group(3), out, count=1)
-        if n: out = new
-        else: notes.append("no 'detailed_description:' section found - description not replaced")
+        out, ok = _set_section(out, "detailed_description", detailed)
+        if not ok:
+            notes.append("no 'detailed_description:' section found - description not replaced")
+        else:
+            out = _fix_retention(out, mapping)
     for nmsg in notes:
         print(f"[{who}] {nmsg}")
     return out, notes
@@ -1028,8 +1137,17 @@ class H3ClownProphecySampler:
             if mode == "manual":
                 new_prompt, notes = _replace_sections(prompt, pp.get("summary", ""), pp.get("detailed", ""), who)
             else:
-                s_new, d_new = _ollama(pp["ollama_url"], pp["ollama_model"], PROPHECY_LLM_RULES.format(secs=secs), prompt, seed, who)
-                new_prompt, notes = _replace_sections(prompt, s_new, d_new, who)
+                total_s = shot_frames / FPS
+                sliced, mapping, snote = _ending_slice(_get_section(prompt, "detailed_description") or "", total_s, secs)
+                notes.append(snote)
+                ask = (prompt + "\n\n---\nTHE LAST %.2f SECONDS (%.2f-%.2f s of the %.2f s video), cut out and renumbered "
+                       "for the short clip:\n\n%s" % (secs, max(0.0, total_s - secs), total_s, total_s, sliced))
+                s_new, d_new = _ollama(pp["ollama_url"], pp["ollama_model"], PROPHECY_LLM_RULES.format(secs=secs), ask, seed, who)
+                if not _SHOT_RE.search(d_new or ""):
+                    notes.append("the LLM's description had no [Shot] labels - using the cut-out shots as they are")
+                    d_new = sliced
+                new_prompt, more = _replace_sections(prompt, s_new, d_new, who, mapping)
+                notes += more
             blocks = self._refs_of(conditioning)
             tokens = clip.tokenize(new_prompt, minimax_ref_items=self._ref_items_from_blocks(vae, blocks))
             cond = clip.encode_from_tokens_scheduled(tokens)

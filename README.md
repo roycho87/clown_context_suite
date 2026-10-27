@@ -43,6 +43,47 @@ Everything shows up under the **Clown Context Suite** category.
 
 The shot's sound: if the latent going in already carries sound (from Clown Force Audio), Prophecy uses it. Otherwise it makes the shot's sound with a tiny quick render first, so the ending and the full shot share the same sound.
 
+## Writing prompts for Clown Prophecy
+
+In `ollama` and `manual` mode, Clown Prophecy Prompt rewrites your shot prompt so it only describes the ending. To do that it has to find the parts of your prompt, so **use the standard H3 reference-mode layout**:
+
+```
+subject_definitions:
+<Subject 1> is the pilot in <Picture 1>.
+
+summary:
+[reference generation] What happens in the whole clip.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1], [Shot 2]): fully_preserved.
+
+detailed_description:
+One or two sentences of overall style and lighting.
+
+[Shot 1]
+What happens in the first shot.
+
+[Shot 2] 00:05.000
+What happens from 5 seconds on.
+
+overall_soundscape:
+Ambient sound.
+
+non_diegetic_music:
+N/A
+```
+
+- **Section names on their own line**, ending in a colon, spelled exactly like above. Blank lines between sections are fine either way.
+- **Shots labelled `[Shot 1]`, `[Shot 2]`…** inside `detailed_description`.
+- **Every shot after the first needs a start time** right after its label: `[Shot 2] 00:05.000` or `[Shot 2] At 00:05.000,`. The node uses these times to work out which shots fall in the ending. Without them, it can only use the last shot.
+- **One-shot prompts** just need `[Shot 1]`.
+
+The node cuts out the shots that fall in the ending, renumbers them for the short clip, and fixes the shot numbers in `retention_analysis` to match. In `ollama` mode the LLM then rewrites those shots to show how the action ends.
+
+If your prompts use a different layout, use `as is` mode (your prompt unchanged) or `manual` mode (type the ending yourself).
+
+**How well the ending is written depends on your LLM.** Bigger models that follow instructions well do best. Always look at the candidate before accepting it: reroll, or switch to `manual`, if it's wrong.
+
 ## Clown Shot Counter
 
 | Setting | Meaning |
