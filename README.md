@@ -50,8 +50,7 @@ In `ollama` and `manual` mode, Clown Prophecy Prompt rewrites your shot prompt s
 **Easiest way to get the format right:** write your prompts with the [H3 Prompt IDE](https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE) node. It outputs the standard layout Clown Prophecy expects. Just make sure every shot after the first has a start time.
 
 - **H3 Prompt IDE:** https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE
-- **Official MiniMax H3 prompting rules (reference mode, the layout below):** https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md
-- **Official rules for the other modes (T2VA, I2VA, FL2VA, L2VA):** https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md
+- **Official MiniMax H3 prompting rules (Ref2VA):** https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md
 
 The layout looks like this:
 
