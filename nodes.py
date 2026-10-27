@@ -887,7 +887,7 @@ class H3ClownProphecyPrompt:
                 "manual_summary": ("STRING", {"default": "", "multiline": True}),
                 "manual_detailed_description": ("STRING", {"default": "", "multiline": True}),
                 "llm_sees": ("BOOLEAN", {"default": False,
-                                         "label_on": "trim all but ending [Shot] (weak LLMs)",
+                                         "label_on": "trim all but ending [Shots] (weak LLMs)",
                                          "label_off": "provide full [Shot] description (strong LLMs)",
                                          "tooltip": "ollama mode only. On: the LLM gets just the subject definitions and the shots "
                                                     "that fall in the ending, so it can't copy the opening shot. Off: it also gets "
