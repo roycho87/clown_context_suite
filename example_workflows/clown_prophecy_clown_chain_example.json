@@ -2582,20 +2582,20 @@
           "link": null
         },
         {
-          "localized_name": "prophecy_latent_folder",
-          "name": "prophecy_latent_folder",
-          "type": "STRING",
-          "widget": {
-            "name": "prophecy_latent_folder"
-          },
-          "link": null
-        },
-        {
           "localized_name": "lock_accept",
           "name": "lock_accept",
           "type": "BOOLEAN",
           "widget": {
             "name": "lock_accept"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "prophecy_latent_folder",
+          "name": "prophecy_latent_folder",
+          "type": "STRING",
+          "widget": {
+            "name": "prophecy_latent_folder"
           },
           "link": null
         }
@@ -2661,10 +2661,10 @@
         56,
         1234,
         "fixed",
-        0.5,
+        0.0,
         false,
-        "clown_prophecy",
-        false
+        false,
+        "clown_prophecy"
       ],
       "color": "#c2407a",
       "bgcolor": "#6e2347"

@@ -250,10 +250,16 @@ app.registerExtension({
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function (info) {
                 const r = onConfigure?.apply(this, arguments);
-                // workflows saved before lock_accept existed: accept used to stay on, so keep that
-                const acc = W(this, "accept"), lock = W(this, "lock_accept");
+                // widget order is ... accept, lock_accept, prophecy_latent_folder. Fix workflows saved in older orders:
+                //   before lock_accept existed: ... accept, folder          (accept used to stay on -> lock = accept)
+                //   first lock_accept version:  ... accept, folder, lock
+                const acc = W(this, "accept"), lock = W(this, "lock_accept"), folder = W(this, "prophecy_latent_folder");
                 const vals = info?.widgets_values;
-                if (acc && lock && Array.isArray(vals) && vals.length <= this.widgets.indexOf(lock) && acc.value) lock.value = true;
+                const ia = acc ? this.widgets.indexOf(acc) : -1;
+                if (acc && lock && folder && Array.isArray(vals) && ia >= 0 && typeof vals[ia + 1] === "string") {
+                    folder.value = vals[ia + 1];
+                    lock.value = typeof vals[ia + 2] === "boolean" ? vals[ia + 2] : !!vals[ia];
+                }
                 return r;
             };
             const onExecuted = nodeType.prototype.onExecuted;

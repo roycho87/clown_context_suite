@@ -957,13 +957,13 @@ class H3ClownProphecySampler:
                                                     "0 = keep the shot audio exactly, 1 = regenerate it, 0.5 = halfway."}),
                 "accept": ("BOOLEAN", {"default": False, "label_on": "YES - use this ending, run the rest",
                                        "label_off": "no - render a candidate and stop"}),
-                "prophecy_latent_folder": ("STRING", {"default": "clown_prophecy",
-                                                      "tooltip": "Folder in output/ for the candidate and accepted endings."}),
                 "lock_accept": ("BOOLEAN", {"default": False, "label_on": "locked - accept stays on",
                                             "label_off": "unlocked - accept turns off after one use",
                                             "tooltip": "On = accept turns on and stays on (hands-free). Off = accept turns off, "
                                                        "and when you turn accept on it is used for one Prophecy shot, then switches "
                                                        "itself off so the next Prophecy shot stops for review."}),
+                "prophecy_latent_folder": ("STRING", {"default": "clown_prophecy",
+                                                      "tooltip": "Folder in output/ for the candidate and accepted endings."}),
             },
             "optional": {
                 "prophecy_prompt": ("PROPHECY_PROMPT", {"lazy": True, "tooltip": "From Clown Prophecy Prompt. Empty = the shot prompt as is."}),

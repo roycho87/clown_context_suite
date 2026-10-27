@@ -42,8 +42,8 @@ Everything shows up under the **Clown Context Suite** category.
 | `seed` | Seed for the ending only. |
 | `audio_mask` | How much the main sampler may change the shot's sound: 0 = keep it exactly, 1 = remake it. Ignored when the sound comes from Clown Force Audio with its own mask. |
 | `accept` | Off = render a candidate ending, show it, and stop. Run again to reroll. On = use that ending and render the shot. On with no candidate yet = render one and use it straight away. |
-| `prophecy_latent_folder` | Folder in `output/` where the endings are saved. |
 | `lock_accept` | On = `accept` turns on and stays on, so every Prophecy shot runs hands-free. Off = `accept` turns off; when you turn `accept` on, it's used for one Prophecy shot and then switches itself off, so the next Prophecy shot stops for review. Turning `accept` off by hand also turns the lock off. |
+| `prophecy_latent_folder` | Folder in `output/` where the endings are saved. |
 
 The shot's sound: if the latent going in already carries sound (from Clown Force Audio), Prophecy uses it. Otherwise it makes the shot's sound with a tiny quick render first, so the ending and the full shot share the same sound.
 
@@ -160,7 +160,19 @@ Rules that work:
 - Context and Anchoring must never hold the same frames.
 - The Anchoring frames must outnumber the Context frames.
 
-## Example workflow
+## Example workflows
+
+### Clown Chain example
+
+`example_workflows/clown_prophecy_clown_chain_example.json` is a normal H3 Motion Context-style chain with the Clown nodes in, driven by the **Clown Chain** buttons. It only uses the Load / Save Latent nodes that Motion Context and Motion Context MultiRef both have, so it opens with no missing nodes whichever one you installed.
+
+1. Load your reference pictures and write the prompt in the **H3 Prompt IDE** node.
+2. Press **Chain** (or **Run/Re-roll** for one shot). Don't use ComfyUI's Run button.
+3. The counter is on `follow motion context` and `lock_accept` is off, so every Prophecy shot stops so you can check the ending. Turn `accept` on and press **Run/Re-roll** to use it, then **Chain** to carry on. Raise `run_every` so Chain runs some shots on its own in between.
+
+Keep Load Latent, Save Latent and Clown Chain inside their group.
+
+### Vlog example
 
 `example_workflows/clown_context_suite_example.json` makes a talking vlog from pre-split audio clips and one prompt file per shot.
 
@@ -170,10 +182,10 @@ Rules that work:
 
 Video Settings is set to 8-second shots (192 frames), Clown Context to 39 / drop_last 17 to match a 39-frame audio overlap, and Prophecy to run every 2 shots.
 
-### Other packs the example uses
+### Other packs the examples use
 
 - [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context) or [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) (save / load latent). Install one, not both: they use the same node names.
-- [ComfyUI-H3-Prompt-IDE](https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE)
+- ComfyUI-H3-Prompt-IDE
 - [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes)
 - [ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)
 - [rgthree-comfy](https://github.com/rgthree/rgthree-comfy)
