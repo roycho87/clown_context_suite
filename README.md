@@ -163,8 +163,7 @@ Both copy real latents into the shot at matching block positions and mask them s
 | **Clown Context** | `head_frames` 39 | `drop_last` 17 |
 | **Clown Anchoring** | `tail_frames` 56 | `drop_first` 17 |
 
-Rules that work:
-- Context and Anchoring must never hold the same frames.
+Rule that works:
 - The Anchoring frames must outnumber the Context frames.
 
 ## Example workflows
