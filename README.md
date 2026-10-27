@@ -173,7 +173,7 @@ Video Settings is set to 8-second shots (192 frames), Clown Context to 39 / drop
 ### Other packs the example uses
 
 - [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context) or [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) (save / load latent). Install one, not both: they use the same node names.
-- ComfyUI-H3-Prompt-IDE
+- [ComfyUI-H3-Prompt-IDE](https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE)
 - [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes)
 - [ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)
 - [rgthree-comfy](https://github.com/rgthree/rgthree-comfy)
