@@ -9,6 +9,7 @@ const CLOWN_NODES = new Set([
     "H3ClownProphecyPrompt",
     "H3ClownShotCounter",
     "H3ClownForceAudio",
+    "H3ClownChain",
 ]);
 const TITLE_PINK = "#c2407a";
 const BODY_PINK = "#6e2347";

@@ -6,6 +6,8 @@ ComfyUI nodes for chaining MiniMax H3 clips without the quality slowly falling a
 
 Clown Context Suite stands on the work of **seitanism** and **nikodemon**, who came before it. I'm just building off their work, so all credit to them for laying the groundwork.
 
+**Clown Chain** is nikodemon's Chain node from [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), copied in and renamed (GPL-3.0, like this pack). See [Clown Chain](#clown-chain) for why.
+
 ## The problem
 
 When you chain H3 clips, each new clip starts from the tail of the last one. You tell the model where to start, but never where to end. Detail is lost a little in every clip, and because each clip starts from the one before, the loss stacks up over the chain.
@@ -24,7 +26,8 @@ Do this every two shots or so and the quality never drops far enough to notice.
 | **Clown Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug Clown Prophecy's ending into `next_shot`. |
 | **Clown Prophecy Sampler** | Renders the clean ending for the shot, before the shot exists. |
 | **Clown Prophecy Prompt** | How the ending is worded: an LLM (Ollama, LM Studio…) rewrites the prompt so it only describes the ending, your own text, or the shot prompt as is. |
-| **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). |
+| **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
+| **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
 Everything shows up under the **Clown Context Suite** category.
@@ -40,6 +43,7 @@ Everything shows up under the **Clown Context Suite** category.
 | `audio_mask` | How much the main sampler may change the shot's sound: 0 = keep it exactly, 1 = remake it. Ignored when the sound comes from Clown Force Audio with its own mask. |
 | `accept` | Off = render a candidate ending, show it, and stop. Run again to reroll. On = use that ending and render the shot. On with no candidate yet = render one and use it straight away. |
 | `prophecy_latent_folder` | Folder in `output/` where the endings are saved. |
+| `lock_accept` | On = `accept` turns on and stays on, so every Prophecy shot runs hands-free. Off = `accept` turns off; when you turn `accept` on, it's used for one Prophecy shot and then switches itself off, so the next Prophecy shot stops for review. Turning `accept` off by hand also turns the lock off. |
 
 The shot's sound: if the latent going in already carries sound (from Clown Force Audio), Prophecy uses it. Otherwise it makes the shot's sound with a tiny quick render first, so the ending and the full shot share the same sound.
 
@@ -104,11 +108,45 @@ If your endings keep looking like the start of the shot, switch it to the trim s
 
 | Setting | Meaning |
 |---|---|
-| `use_classic_counter` on | The `shot_number` box is the shot. `increment` / `decrement` change it each time you hit run, `increment after accept` only after an accepted Prophecy run (one shot at a time only), `fixed` never. |
+| `use_classic_counter` on | The `shot_number` box is the shot. `increment` / `decrement` change it each time you hit run, `increment after accept` only after an accepted Prophecy run (one shot at a time only), `fixed` never. `follow motion context` copies the `clip_index` from Motion Context's Save Latent node each run (see below). |
 | `use_classic_counter` off | The shot is worked out when the run starts: highest saved latent in `latent_prefix` + 1. A rejected ending saves nothing, so a batch rerolls the same shot until one is accepted, then moves on. Each new chain needs its own empty folder. |
 | `latent_prefix` | The Save Latent `filename_prefix` (count mode). |
 
 The box at the bottom of the node shows the shot the last run used, and in count mode how many latents are saved and which shot is next.
+
+## Clown Chain
+
+Clown Chain is a copy of the Chain node from nikodemon's [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), renamed. We put it here because Motion Context and seitanism's [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) use the same node names, so you can only have one of them installed, and MultiRef has no Chain node. With Clown Chain you can use the Clown nodes with either pack and don't have to choose.
+
+It works exactly like the original. Keep **Load Latent**, **Save Latent** and **Clown Chain** in the same canvas group. Either pack's Load / Save Latent nodes work.
+
+| Button | What it does |
+|---|---|
+| **Approve** | Moves Load and Save up one and runs the next shot. |
+| **Run/Re-roll** | Runs the current shot again. Use this instead of ComfyUI's Run button. |
+| **Chain** | Approve on a loop. `segments` = how many shots before it stops (0 = until you press Stop). |
+| **Reset** | Sets Load 0 / Save 1. Doesn't delete anything. |
+| **Clear latents** | Deletes the numbered saved shots in the Load folder. Custom file names are kept. |
+
+If you have nikodemon's Motion Context installed you can use its own Chain node instead; everything below works the same with either.
+
+On the first shot Clown Context doesn't run the Load Latent node at all, so MultiRef's Load (which errors on an empty folder at `clip_index` 0) is fine.
+
+## Using it with a Chain node
+
+Set the counter's `shot_counter` to **follow motion context**. The counter then copies the `clip_index` from the Motion Context **Save Latent** node every run, so Prophecy's `run_every` lines up with the Chain node's count (Clown Chain or Motion Context's Chain). The counter only reads that number and never changes it; the Chain node stays in charge. Leave Load and Save Latent's `clip_index` as widgets (not wired) so the Chain buttons can move them.
+
+How a session goes, with `run_every` 4 and `lock_accept` off:
+
+1. Press **Chain**. Shots 1–3 run hands-free.
+2. On shot 4 Prophecy renders a candidate ending and the chain stops there (nothing is saved for that shot yet).
+3. Not happy? Press **Run/Re-roll** for a new candidate.
+4. Happy? Turn `accept` on and press **Run/Re-roll**. Shot 4 renders with that ending, and `accept` switches itself back off.
+5. Press **Chain** to carry on. It stops again at shot 8.
+
+Don't press **Approve** or **Chain** right after a candidate: both move to the next shot first, so the shot with the candidate would be skipped.
+
+With `lock_accept` on, Chain runs straight through every shot, Prophecy shots included.
 
 ## Clown Context and Clown Anchoring
 
@@ -128,13 +166,13 @@ Rules that work:
 
 1. Set the prompt folder in **Load Text Batch From Dir** and the audio folder in **Shot Audio (one file per shot)**. One `.txt` and one audio file per shot, numbered in order.
 2. Load your two reference pictures.
-3. Set the batch count to the number of shots and run. With the counter on `increment` and `accept` on, every shot renders in one go.
+3. Set the batch count to the number of shots and run. With the counter on `increment` and `lock_accept` on, every shot renders in one go.
 
 Video Settings is set to 8-second shots (192 frames), Clown Context to 39 / drop_last 17 to match a 39-frame audio overlap, and Prophecy to run every 2 shots.
 
 ### Other packs the example uses
 
-- ComfyUI-H3-Motion-Context (save / load latent)
+- [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context) or [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) (save / load latent). Install one, not both: they use the same node names.
 - ComfyUI-H3-Prompt-IDE
 - [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes)
 - [ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)

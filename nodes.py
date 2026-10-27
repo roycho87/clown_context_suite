@@ -255,9 +255,17 @@ class H3ClownContextExperimental:
             "optional": {
                 "shot_number": ("INT", {"forceInput": True,
                                         "tooltip": "Connect your Shot Number. If left empty, the first-shot check is skipped."}),
-                "previous_shot": ("LATENT", {"tooltip": "Previous shot's saved latent (list or packed). If empty, the latent passes through."}),
+                "previous_shot": ("LATENT", {"lazy": True,
+                                             "tooltip": "Previous shot's saved latent (list or packed). If empty, the latent passes through. "
+                                                        "Not loaded at all on the first shot."}),
             },
         }
+
+    def check_lazy_status(self, first_shot=1, shot_number=None, previous_shot=None, **kw):
+        # first shot: don't run the Load Latent node at all (MultiRef's Load errors on an empty folder at clip_index 0)
+        if shot_number is not None and int(shot_number) <= int(first_shot):
+            return []
+        return ["previous_shot"] if previous_shot is None else []
 
     def anchor(self, latent, head_frames, drop_last=0, drop_first=17, hold_audio=True, first_shot=1,
                audio_frames=0, audio_feather_ticks=0, shot_number=None, previous_shot=None):
@@ -730,7 +738,8 @@ class H3ClownShotCounter:
     RETURN_NAMES = ("shot_number", "previous_shot", "continuation")
     FUNCTION = "count"
     DESCRIPTION = ("classic: shot_number is the box, and it changes by itself: fixed = never, increment = +1 each run, "
-                   "increment after accept = +1 after an accepted Prophecy run (one at a time only). "
+                   "increment after accept = +1 after an accepted Prophecy run (one at a time only), "
+                   "follow motion context = copies Motion Context Save Latent's clip_index each run (read only). "
                    "count saved latents: the shot is worked out when the run starts = highest saved clip in latent_prefix + 1. "
                    "A rejected Prophecy ending saves nothing, so a batch rerolls the same shot until one is accepted, then moves on. "
                    "Each new chain needs its own empty folder. "
@@ -741,8 +750,10 @@ class H3ClownShotCounter:
         return {
             "required": {
                 "shot_number": ("INT", {"default": 1, "min": 1, "max": 99999}),
-                "shot_counter": (["increment after accept", "increment", "decrement", "fixed"], {"default": "increment after accept",
-                                 "tooltip": "classic mode only. increment / decrement: +1 / -1 each time you hit run. increment after accept: +1 after an accepted Prophecy run. fixed: never."}),
+                "shot_counter": (["increment after accept", "increment", "decrement", "fixed", "follow motion context"],
+                                 {"default": "increment after accept",
+                                  "tooltip": "classic mode only. increment / decrement: +1 / -1 each time you hit run. increment after accept: +1 after an accepted Prophecy run. fixed: never. "
+                                             "follow motion context: copies Motion Context Save Latent's clip_index each run (the Chain node's count); never changes it."}),
                 "use_classic_counter": ("BOOLEAN", {"default": True, "label_on": "classic (the shot_number box)",
                                                     "label_off": "count saved latents",
                                                     "tooltip": "Off = shot = highest saved latent in latent_prefix + 1, worked out at run time. Works with batches."}),
@@ -937,7 +948,7 @@ class H3ClownProphecySampler:
                 "run_every": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1,
                                       "tooltip": "Run Clown Prophecy only on shots that are multiples of this (3 = shots 3, 6, 9...). "
                                                  "Other shots run normally. 1 = every shot."}),
-                "shot_number": ("INT", {"forceInput": True, "tooltip": "From Clown Shot Counter. The sampler moves that counter after a run."}),
+                "shot_number": ("INT", {"forceInput": True, "tooltip": "From Clown Shot Counter (in a Motion Context workflow, set it to 'follow motion context')."}),
                 "prophecy_frames": ("INT", {"default": 56, "min": 5, "max": 4096, "step": 17,
                                             "tooltip": "Length of the ending (5, 22, 39, 56, 73 ...). Match Clown Anchoring's tail_frames."}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": "fixed"}),
@@ -948,6 +959,11 @@ class H3ClownProphecySampler:
                                        "label_off": "no - render a candidate and stop"}),
                 "prophecy_latent_folder": ("STRING", {"default": "clown_prophecy",
                                                       "tooltip": "Folder in output/ for the candidate and accepted endings."}),
+                "lock_accept": ("BOOLEAN", {"default": False, "label_on": "locked - accept stays on",
+                                            "label_off": "unlocked - accept turns off after one use",
+                                            "tooltip": "On = accept turns on and stays on (hands-free). Off = accept turns off, "
+                                                       "and when you turn accept on it is used for one Prophecy shot, then switches "
+                                                       "itself off so the next Prophecy shot stops for review."}),
             },
             "optional": {
                 "prophecy_prompt": ("PROPHECY_PROMPT", {"lazy": True, "tooltip": "From Clown Prophecy Prompt. Empty = the shot prompt as is."}),
@@ -1030,7 +1046,7 @@ class H3ClownProphecySampler:
         return need
 
     def prophesy(self, model, clip, vae, audio_vae, sampler, sigmas, conditioning, latent, bypass, run_every, shot_number,
-                 prophecy_frames, seed, audio_mask, accept, prophecy_latent_folder, prophecy_prompt=None):
+                 prophecy_frames, seed, audio_mask, accept, prophecy_latent_folder, lock_accept=False, prophecy_prompt=None):
         import folder_paths
         import node_helpers
         from comfy_execution.graph import ExecutionBlocker
@@ -1101,7 +1117,7 @@ class H3ClownProphecySampler:
         sel_p = os.path.join(base, f"shot_{shot:04d}.pt")
         audio_p = os.path.join(base, f"shot_{shot:04d}_audio.pt")
         secs = F / FPS
-        ui_state = lambda acc: {"prophecy": [{"accepted": bool(acc), "shot": shot}]}
+        ui_state = lambda acc: {"prophecy": [{"accepted": bool(acc), "used": bool(acc), "shot": shot}]}
 
         # fingerprints: a saved file is only reused if everything that made it is unchanged
         pp_key = {k: pp.get(k) for k in ("mode", "prompt", "summary", "detailed", "ollama_model", "ending_only")}
