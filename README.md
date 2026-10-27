@@ -91,6 +91,15 @@ If your prompts use a different layout, use `as is` mode (your prompt unchanged)
 
 **How well the ending is written depends on your LLM.** Bigger models that follow instructions well do best. Always look at the candidate before accepting it: reroll, or switch to `manual`, if it's wrong.
 
+**The `llm_sees` switch** on Clown Prophecy Prompt sets how much of your prompt the LLM gets:
+
+| Setting | The LLM gets | Use it for |
+|---|---|---|
+| **trim all but ending [Shot] (weak LLMs)** (default) | The subject definitions and only the shots that fall in the ending | Smaller or quantized models, which tend to copy the opening shot if they see it |
+| **provide full [Shot] description (strong LLMs)** | The whole prompt for context, plus the ending's shots | Strong models that can use the extra context |
+
+If your endings keep looking like the start of the shot, make sure the switch is on the trim setting.
+
 ## Clown Shot Counter
 
 | Setting | Meaning |

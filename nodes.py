@@ -505,8 +505,7 @@ def _video_audio(latent, who):
 
 # --------------------------------------------------------------------------- Clown Prophecy Sampler
 PROPHECY_LLM_RULES = """You edit MiniMax H3 video prompts. A separate short clip will be generated that shows ONLY THE LAST
-{secs:.2f} SECONDS of the video described by the full prompt. You get the full prompt for context, then the part of its
-detailed_description that falls in those last {secs:.2f} seconds, already cut out and renumbered for the short clip.
+{secs:.2f} SECONDS of a longer video. {source}
 
 Rewrite two sections for the short clip:
 1. summary: one short English paragraph about the last {secs:.2f} seconds only. Keep the same square-bracketed
@@ -521,6 +520,11 @@ Rules: write in English. Keep every reference label exactly as written (<Subject
 <Audio 1> and so on) and keep the same subjects, outfits, setting, lighting and camera style. Describe only visible
 and audible things.
 Answer with JSON only: {{"summary": "...", "detailed_description": "..."}}"""
+
+_LLM_SOURCE_FULL = ("You get the full prompt of the longer video for context, then the part of its detailed_description that "
+                    "falls in those last {secs:.2f} seconds, already cut out and renumbered for the short clip.")
+_LLM_SOURCE_ENDING = ("You get the subject definitions and the part of the video's detailed_description that falls in those last "
+                      "{secs:.2f} seconds, already cut out and renumbered for the short clip. That part is all you need.")
 
 _SECTION_NAMES = ("subject_definitions", "summary", "retention_analysis", "detailed_description",
                   "overall_soundscape", "non_diegetic_music")
@@ -882,12 +886,20 @@ class H3ClownProphecyPrompt:
                                                      "LM Studio (http://127.0.0.1:1234), and others. /v1 is added if missing."}),
                 "manual_summary": ("STRING", {"default": "", "multiline": True}),
                 "manual_detailed_description": ("STRING", {"default": "", "multiline": True}),
+                "llm_sees": ("BOOLEAN", {"default": True,
+                                         "label_on": "trim all but ending [Shot] (weak LLMs)",
+                                         "label_off": "provide full [Shot] description (strong LLMs)",
+                                         "tooltip": "ollama mode only. On: the LLM gets just the subject definitions and the shots "
+                                                    "that fall in the ending, so it can't copy the opening shot. Off: it also gets "
+                                                    "the whole prompt for context, which strong LLMs can use but weaker ones get "
+                                                    "confused by."}),
             }
         }
 
-    def build(self, prompt, prompt_mode, ollama_model, ollama_url, manual_summary, manual_detailed_description):
+    def build(self, prompt, prompt_mode, ollama_model, ollama_url, manual_summary, manual_detailed_description,
+              llm_sees=True):
         return ({"prompt": prompt, "mode": prompt_mode, "ollama_model": ollama_model, "ollama_url": ollama_url,
-                 "summary": manual_summary, "detailed": manual_detailed_description},)
+                 "summary": manual_summary, "detailed": manual_detailed_description, "ending_only": bool(llm_sees)},)
 
 
 class H3ClownProphecySampler:
@@ -1092,7 +1104,7 @@ class H3ClownProphecySampler:
         ui_state = lambda acc: {"prophecy": [{"accepted": bool(acc), "shot": shot}]}
 
         # fingerprints: a saved file is only reused if everything that made it is unchanged
-        pp_key = {k: pp.get(k) for k in ("mode", "prompt", "summary", "detailed", "ollama_model")}
+        pp_key = {k: pp.get(k) for k in ("mode", "prompt", "summary", "detailed", "ollama_model", "ending_only")}
         audio_key = _fingerprint("audio-v1", conditioning, int(seed), shot_frames, sigmas)
         ending_key = _fingerprint("ending-v1", conditioning, pp_key, int(seed), F, width, height, shot_frames,
                                   sigmas, lat_audio if forced else None)
@@ -1140,9 +1152,20 @@ class H3ClownProphecySampler:
                 total_s = shot_frames / FPS
                 sliced, mapping, snote = _ending_slice(_get_section(prompt, "detailed_description") or "", total_s, secs)
                 notes.append(snote)
-                ask = (prompt + "\n\n---\nTHE LAST %.2f SECONDS (%.2f-%.2f s of the %.2f s video), cut out and renumbered "
-                       "for the short clip:\n\n%s" % (secs, max(0.0, total_s - secs), total_s, total_s, sliced))
-                s_new, d_new = _ollama(pp["ollama_url"], pp["ollama_model"], PROPHECY_LLM_RULES.format(secs=secs), ask, seed, who)
+                window = ("THE LAST %.2f SECONDS (%.2f-%.2f s of the %.2f s video), cut out and renumbered for the short clip:"
+                          "\n\n%s" % (secs, max(0.0, total_s - secs), total_s, total_s, sliced))
+                if pp.get("ending_only", True):
+                    old_sum = _get_section(prompt, "summary") or ""
+                    tag = re.match(r"\s*(\[[^\]]*\])", old_sum)
+                    ask = ("subject_definitions:\n" + (_get_section(prompt, "subject_definitions") or "") + "\n\n"
+                           + ("Start the summary with: " + tag.group(1) + "\n\n" if tag else "") + window)
+                    source = _LLM_SOURCE_ENDING
+                    notes.append("LLM saw only the ending's shots")
+                else:
+                    ask = prompt + "\n\n---\n" + window
+                    source = _LLM_SOURCE_FULL
+                rules = PROPHECY_LLM_RULES.format(secs=secs, source=source.format(secs=secs))
+                s_new, d_new = _ollama(pp["ollama_url"], pp["ollama_model"], rules, ask, seed, who)
                 if not _SHOT_RE.search(d_new or ""):
                     notes.append("the LLM's description had no [Shot] labels - using the cut-out shots as they are")
                     d_new = sliced
