@@ -2003,7 +2003,7 @@
      ]
     }
    ],
-   "title": "Clown Context (73, drop last 51: holds the previous shot frames 0-21)",
+   "title": "Clown Context (39, drop last 17: holds the previous shot's first 22 overlap frames)",
    "properties": {
     "Node name for S&R": "H3ClownContextExperimental",
     "ue_properties": {
@@ -3045,7 +3045,7 @@
    "type": "LoadTextBatchFromDir",
    "pos": [
     1796.729840183469,
-    180
+    210
    ],
    "size": [
     420,
@@ -3336,8 +3336,8 @@
    "id": 8921,
    "type": "VAEDecodeAudio",
    "pos": [
-    3950.783363620968,
-    1197.7754673725954
+    4460,
+    563.7754673725952
    ],
    "size": [
     230,
@@ -4114,7 +4114,7 @@
     2818.4468401834683,
     -60,
     664,
-    2403.5555555555557
+    2480
    ],
    "color": "#a1309b",
    "flags": {}
@@ -4141,6 +4141,19 @@
     1869.7754673725954
    ],
    "color": "#b58b2a",
+   "flags": {}
+  },
+  {
+   "id": 8,
+   "title": "Shot audio -> Clown Force Audio",
+   "bounding": [
+    3542.4468401834683,
+    -480,
+    810,
+    280
+   ],
+   "color": "#3f789e",
+   "font_size": 24,
    "flags": {}
   }
  ],
