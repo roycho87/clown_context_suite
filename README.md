@@ -95,10 +95,10 @@ If your prompts use a different layout, use `as is` mode (your prompt unchanged)
 
 | Setting | The LLM gets | Use it for |
 |---|---|---|
-| **trim all but ending [Shot] (weak LLMs)** (default) | The subject definitions and only the shots that fall in the ending | Smaller or quantized models, which tend to copy the opening shot if they see it |
-| **provide full [Shot] description (strong LLMs)** | The whole prompt for context, plus the ending's shots | Strong models that can use the extra context |
+| **trim all but ending [Shot] (weak LLMs)** | The subject definitions and only the shots that fall in the ending | Smaller or quantized models, which tend to copy the opening shot if they see it |
+| **provide full [Shot] description (strong LLMs)** (default) | The whole prompt for context, plus the ending's shots | Strong models that can use the extra context |
 
-If your endings keep looking like the start of the shot, make sure the switch is on the trim setting.
+If your endings keep looking like the start of the shot, switch it to the trim setting.
 
 ## Clown Shot Counter
 

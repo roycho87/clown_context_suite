@@ -886,7 +886,7 @@ class H3ClownProphecyPrompt:
                                                      "LM Studio (http://127.0.0.1:1234), and others. /v1 is added if missing."}),
                 "manual_summary": ("STRING", {"default": "", "multiline": True}),
                 "manual_detailed_description": ("STRING", {"default": "", "multiline": True}),
-                "llm_sees": ("BOOLEAN", {"default": True,
+                "llm_sees": ("BOOLEAN", {"default": False,
                                          "label_on": "trim all but ending [Shot] (weak LLMs)",
                                          "label_off": "provide full [Shot] description (strong LLMs)",
                                          "tooltip": "ollama mode only. On: the LLM gets just the subject definitions and the shots "
@@ -897,7 +897,7 @@ class H3ClownProphecyPrompt:
         }
 
     def build(self, prompt, prompt_mode, ollama_model, ollama_url, manual_summary, manual_detailed_description,
-              llm_sees=True):
+              llm_sees=False):
         return ({"prompt": prompt, "mode": prompt_mode, "ollama_model": ollama_model, "ollama_url": ollama_url,
                  "summary": manual_summary, "detailed": manual_detailed_description, "ending_only": bool(llm_sees)},)
 
@@ -1154,7 +1154,7 @@ class H3ClownProphecySampler:
                 notes.append(snote)
                 window = ("THE LAST %.2f SECONDS (%.2f-%.2f s of the %.2f s video), cut out and renumbered for the short clip:"
                           "\n\n%s" % (secs, max(0.0, total_s - secs), total_s, total_s, sliced))
-                if pp.get("ending_only", True):
+                if pp.get("ending_only", False):
                     old_sum = _get_section(prompt, "summary") or ""
                     tag = re.match(r"\s*(\[[^\]]*\])", old_sum)
                     ask = ("subject_definitions:\n" + (_get_section(prompt, "subject_definitions") or "") + "\n\n"
