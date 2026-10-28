@@ -200,6 +200,20 @@ Both copy real latents into the shot at matching block positions and mask them s
 Rule that works:
 - The Anchoring frames must outnumber the Context frames.
 
+### Joining the clips
+
+Each clip is saved whole (all of its frames, overlap included), so trim them when you join them in your editor. `drop_last` doesn't remove the overlap, it only changes what's in it. With Clown Context at 39, `drop_last` 17:
+
+- The new shot's frames 0-21 are exact copies of the previous shot's frames 153-174 (the held part).
+- The new shot's frames 22-38 are freshly made, but they cover the same moment as the previous shot's frames 175-191 (the dropped part).
+
+So the two clips still share 39 frames of time: 22 identical, and 17 that are two different takes of the same moment. Butted together untrimmed, that moment plays twice. Trim one of two ways:
+
+1. Cut the first 39 frames off every clip after the first (you keep the previous shot's ending).
+2. Cut the last 17 frames off each clip and the first 22 off the next (you keep the new shot's take). Use this when something is pinned at the back of the shot, like a Prophecy ending or a capstone.
+
+Clip 1 is always kept whole at the start. For other settings, the overlap is `head_frames` and the copied part is `head_frames` minus the drops.
+
 ## Example workflows
 
 ### Clown Chain example
