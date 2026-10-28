@@ -210,7 +210,7 @@ Each clip is saved whole (all of its frames, overlap included), so trim them whe
 So the two clips still share 39 frames of time: 22 identical, and 17 that are two different takes of the same moment. Butted together untrimmed, that moment plays twice. Trim one of two ways:
 
 1. Cut the first 39 frames off every clip after the first (you keep the previous shot's ending).
-2. Cut the last 17 frames off each clip and the first 22 off the next (you keep the new shot's take). Use this when something at the back of the shot shouldn't be seen, like a capstone.
+2. Cut the last 17 frames off each clip and the first 22 off the next (you keep the new shot's take). Use this when you'd rather keep the new shot's version of those frames.
 
 Clip 1 is always kept whole at the start. For other settings, the overlap is `head_frames` and the copied part is `head_frames` minus the drops.
 
