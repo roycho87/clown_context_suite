@@ -213,6 +213,12 @@ Keep Load Latent, Save Latent and Clown Chain inside their group.
 
 ### Clown Carryover example
 
+A 10-clip test made with the sane_clown_example workflow. The sound was replaced afterwards.
+
+https://github.com/user-attachments/assets/6e446991-2ac2-4c9a-b476-169040baf0ce
+
+
+
 `example_workflows/sane_clown_example.json` is the Clown Chain example with **Clown Carryover** added. The Prophecy Sampler's `previous_shot` is wired, so you can turn `continue_audio` on. It runs the same way: write the prompt, press **Chain**. Carryover adds the first clip's last frame as a scene reference on every Prophecy shot (`frame_source` = `selected clip`, `clip_number` 1). Plug its `frame` output into the Preview Image to see what it added.
 
 The model group also has ComfyUI's **Model Attention Backend** node (comfy kitchen attention), bypassed. It does the same job as the Sage attention patch, so turn on one or the other.
