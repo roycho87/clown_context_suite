@@ -373,7 +373,8 @@ class H3BlockTailAnchorExperimental:
     DESCRIPTION = (
         "Holds the source's first frames at the end of this shot, in matching block positions, "
         "masked so the sampler keeps them. Audio is held too. drop_last / drop_first trim the "
-        "held window from either end."
+        "held window from either end. With shot_number plugged in, next_shot isn't loaded at all on the "
+        "first shot (so a Load Latent of a clip that doesn't exist yet never runs)."
     )
 
     @classmethod
@@ -393,16 +394,33 @@ class H3BlockTailAnchorExperimental:
                                        "tooltip": "Hold the source's audio over the pinned video. Off = video only, audio is regenerated."}),
         }
         req.update(AUDIO_INPUTS)
+        req["first_shot"] = ("INT", {"default": 1, "min": -9999, "max": 99999,
+                                     "tooltip": "Number of the first shot of your run. On that shot (or earlier) next_shot isn't "
+                                                "loaded and the latent passes through. Only used when shot_number is plugged in."})
         return {
             "required": req,
             "optional": {
-                "next_shot": ("LATENT", {"tooltip": "Source latent (next shot / refined tail), list or packed. If empty, the latent passes through."}),
+                "next_shot": ("LATENT", {"lazy": True,
+                                         "tooltip": "Source latent (next shot / refined tail), list or packed. If empty, the latent passes through. "
+                                                    "Not loaded at all on the first shot when shot_number is plugged in."}),
+                "shot_number": ("INT", {"forceInput": True,
+                                        "tooltip": "Optional. Connect your Shot Number to skip the first shot. If left empty, "
+                                                   "Anchoring works as before."}),
             },
         }
 
+    def check_lazy_status(self, first_shot=1, shot_number=None, next_shot=None, **kw):
+        # first shot: don't run whatever feeds next_shot (e.g. a Load Latent of clip 1 that isn't made yet)
+        if shot_number is not None and int(shot_number) <= int(first_shot):
+            return []
+        return ["next_shot"] if next_shot is None else []
+
     def anchor(self, latent, tail_frames, drop_last=17, drop_first=0, hold_audio=True,
-               audio_frames=0, audio_feather_ticks=0, next_shot=None):
+               audio_frames=0, audio_feather_ticks=0, next_shot=None, first_shot=1, shot_number=None):
         who = "Clown Anchoring Experimental"
+        if shot_number is not None and int(shot_number) <= int(first_shot):
+            print(f"[{who}] shot {shot_number} is the first shot (first_shot = {first_shot}) - next_shot not loaded, latent passed through unchanged")
+            return (latent,)
         if not _has_samples(next_shot):
             print(f"[{who}] no next shot latent - latent passed through unchanged")
             return (latent,)
