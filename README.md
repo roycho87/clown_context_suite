@@ -27,6 +27,7 @@ Do this every two shots or so and the quality never drops far enough to notice.
 | **Clown Prophecy Sampler** | Renders the clean ending for the shot, before the shot exists. |
 | **Clown Prophecy Prompt** | How the ending is worded: an LLM (Ollama, LM Studio…) rewrites the prompt so it only describes the ending, your own text, or the shot prompt as is. |
 | **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
+| **Clown Carryover** | On Prophecy shots, adds a frame from an earlier shot as one more reference picture, so the background and layout stay put. Can turn the frame into a canny, depth or pose map first. |
 | **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
@@ -43,9 +44,41 @@ Everything shows up under the **Clown Context Suite** category.
 | `audio_mask` | How much the main sampler may change the shot's sound: 0 = keep it exactly, 1 = remake it. Ignored when the sound comes from Clown Force Audio with its own mask. |
 | `accept` | Off = render a candidate ending, show it, and stop. Run again to reroll. On = use that ending and render the shot. On with no candidate yet = render one and use it straight away. |
 | `lock_accept` | On = `accept` turns on and stays on, so every Prophecy shot runs hands-free. Off = `accept` turns off; when you turn `accept` on, it's used for one Prophecy shot and then switches itself off, so the next Prophecy shot stops for review. Turning `accept` off by hand also turns the lock off. |
+| `continue_audio` | Off by default. On = when Prophecy makes the shot's sound, it holds the previous shot's last few seconds of audio at the start, so the new sound carries on from it. Needs `previous_shot` wired. How much it holds is copied from Clown Context's `head_frames`. Skipped on the first shot or when nothing is saved yet. |
 | `prophecy_latent_folder` | Folder in `output/` where the endings are saved. |
 
-The shot's sound: if the latent going in already carries sound (from Clown Force Audio), Prophecy uses it. Otherwise it makes the shot's sound with a tiny quick render first, so the ending and the full shot share the same sound.
+| Input | Meaning |
+|---|---|
+| `previous_shot` | Optional. The same Load Latent that feeds Clown Context. Only used when `continue_audio` is on, and only loaded on Prophecy shots. |
+
+The shot's sound: if the latent going in already carries sound (from Clown Force Audio), Prophecy uses it. Otherwise it makes the shot's sound with a tiny quick render first, so the ending and the full shot share the same sound. With `continue_audio` on, that quick render continues the previous shot's sound.
+
+## Clown Carryover
+
+Sits between **MiniMax H3 Reference to Video** and the samplers: positive and latent in, positive and latent out. On the shots Prophecy runs, it takes a frame from an earlier shot, adds it as the next `<Picture N>`, and adds lines to the prompt saying it's the scene layout reference. The Prophecy Sampler sees the extra picture too, so the ending is made with it. On other shots it passes everything through. `bypass` and `run_every` are copied from the Prophecy Sampler when you queue (hidden on the node).
+
+The picture follows the H3 prompting rules: a line in `subject_definitions` saying what it shows and a line in `retention_analysis` saying how closely to follow it.
+
+| Setting | Meaning |
+|---|---|
+| `enabled` | On / off. |
+| `first_shot` | On this shot and earlier there's no earlier shot to use, so it's off. |
+| `carry_lighting` | Also tell H3 to follow the picture's lighting. |
+| `carry_positions` | Also tell H3 to follow where the subjects stand. |
+| `retention` | How closely H3 follows the picture: `fully_preserved`, `partially_preserved` (default), `weak_reference`. Or `canny` / `depth map` / `pose attribute_transfer`: the frame is turned into that map first and only its outlines / layout / poses are followed. |
+| `frame_source` | `previous shot` = the shot before (follows the scene, but copies its drift). `selected clip` = always the clip in `clip_number` (1 = the first shot), so drift doesn't build up. |
+| `clip_number` | Which saved clip to use with `selected clip`. |
+| `frame_position` | `last frame` (default) or `first frame` of that shot. |
+
+| Input / output | Meaning |
+|---|---|
+| `previous_shot` | The same Load Latent that feeds Clown Context. Its folder is also where `selected clip` looks. |
+| `optional_frame` | Your own picture, used instead. |
+| `frame` (output) | The picture that was added (or its map), for a Preview Image. Nothing on shots it's off. |
+
+H3 takes up to 9 pictures. If there are already 9, Carryover passes everything through.
+
+Canny works out of the box. The depth and pose options use [ComfyUI's ControlNet Auxiliary Preprocessors](https://github.com/Fannovel16/comfyui_controlnet_aux) (Depth Anything V2 and DWPose); their models download by themselves the first time.
 
 ## Writing prompts for Clown Prophecy
 
@@ -178,6 +211,12 @@ Rule that works:
 
 Keep Load Latent, Save Latent and Clown Chain inside their group.
 
+### Clown Carryover example
+
+`example_workflows/sane_clown_example.json` is the Clown Chain example with **Clown Carryover** added. The Prophecy Sampler's `previous_shot` is wired, so you can turn `continue_audio` on. It runs the same way: write the prompt, press **Chain**. Carryover adds the first clip's last frame as a scene reference on every Prophecy shot (`frame_source` = `selected clip`, `clip_number` 1). Plug its `frame` output into the Preview Image to see what it added.
+
+The model group also has ComfyUI's **Model Attention Backend** node (comfy kitchen attention), bypassed. It does the same job as the Sage attention patch, so turn on one or the other.
+
 ### Vlog example
 
 `example_workflows/insane_example.json` makes a talking vlog from pre-split audio clips and one prompt file per shot.
@@ -198,6 +237,7 @@ Video Settings is set to 8-second shots (192 frames), Clown Context to 39 / drop
 - [ComfyUI-Custom-Scripts](https://github.com/pythongosssss/ComfyUI-Custom-Scripts)
 - [ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use)
 - [ComfyMath](https://github.com/evanspearman/ComfyMath)
+- [ComfyUI's ControlNet Auxiliary Preprocessors](https://github.com/Fannovel16/comfyui_controlnet_aux) (only for Clown Carryover's depth / pose options)
 - Load Text Batch From Dir, Load Audio Batch From Dir, LoadImageCrop, VideoResolutionNode, and the MiniMax low-VRAM nodes
 
 Clown Prophecy Prompt in `ollama` mode needs a local LLM server: [Ollama](https://ollama.com) (`http://127.0.0.1:11434`), [LM Studio](https://lmstudio.ai) (`http://127.0.0.1:1234`), or any other OpenAI-compatible server. Put its address in `ollama_url`.

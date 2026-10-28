@@ -962,17 +962,27 @@ class H3ClownProphecySampler:
                                             "tooltip": "On = accept turns on and stays on (hands-free). Off = accept turns off, "
                                                        "and when you turn accept on it is used for one Prophecy shot, then switches "
                                                        "itself off so the next Prophecy shot stops for review."}),
+                "continue_audio": ("BOOLEAN", {"default": False, "label_on": "sound: continue the previous shot",
+                                               "label_off": "sound: fresh",
+                                               "tooltip": "When Prophecy pre-renders the shot's sound, hold the previous shot's last "
+                                                          "seconds of audio (from previous_shot) at the start so the new sound carries on "
+                                                          "from it. Skipped when there's no previous shot (e.g. the first shot)."}),
+                "continue_audio_frames": ("INT", {"default": 39, "min": 5, "max": 4096,
+                                                  "tooltip": "How many frames of the previous shot's sound to hold (copied from "
+                                                             "Clown Context's head_frames when you queue)."}),
                 "prophecy_latent_folder": ("STRING", {"default": "clown_prophecy",
                                                       "tooltip": "Folder in output/ for the candidate and accepted endings."}),
             },
             "optional": {
                 "prophecy_prompt": ("PROPHECY_PROMPT", {"lazy": True, "tooltip": "From Clown Prophecy Prompt. Empty = the shot prompt as is."}),
+                "previous_shot": ("LATENT", {"lazy": True, "tooltip": "The previous shot's latent (the same Load Latent as Clown Context). "
+                                                                     "Its sound is continued when continue_audio is on. Only loaded on Prophecy shots."}),
             },
         }
 
     # ---------------------------------------------------------------- helpers
     @staticmethod
-    def _sample(model, cond, latent, sampler, sigmas, seed):
+    def _sample(model, cond, latent, sampler, sigmas, seed, preview=True):
         import comfy.sample, comfy.utils, comfy.model_management, latent_preview
         from comfy_extras.nodes_custom_sampler import Guider_Basic, Noise_RandomNoise
         guider = Guider_Basic(model)
@@ -982,7 +992,12 @@ class H3ClownProphecySampler:
         x = comfy.sample.fix_empty_latent_channels(guider.model_patcher, lat["samples"],
                                                     lat.get("downscale_ratio_spacial", None), lat.get("downscale_ratio_temporal", None))
         lat["samples"] = x
-        cb = latent_preview.prepare_callback(guider.model_patcher, sigmas.shape[-1] - 1, {})
+        steps = sigmas.shape[-1] - 1
+        if preview:
+            cb = latent_preview.prepare_callback(guider.model_patcher, steps, {})
+        else:  # progress bar only, no preview picture (the 64x64 sound render would show as a black square)
+            pbar = comfy.utils.ProgressBar(steps)
+            cb = lambda step, x0, x, total: pbar.update_absolute(step + 1, total, None)
         out = guider.sample(noise.generate_noise(lat), x, sampler, sigmas, denoise_mask=lat.get("noise_mask", None),
                             callback=cb, disable_pbar=not comfy.utils.PROGRESS_BAR_ENABLED, seed=noise.seed)
         res = lat.copy()
@@ -1037,16 +1052,19 @@ class H3ClownProphecySampler:
         n = max(1, int(run_every))
         return (not bool(bypass)) and int(shot_number) % n == 0
 
-    def check_lazy_status(self, bypass=False, run_every=1, shot_number=1, prophecy_prompt=None, **kw):
+    def check_lazy_status(self, bypass=False, run_every=1, shot_number=1, prophecy_prompt=None, continue_audio=False, **kw):
         if not self._active(bypass, run_every, shot_number):
             return []  # skipped: don't run the Prophecy Prompt (Ollama) or load audio
         need = []
         if prophecy_prompt is None:
             need.append("prophecy_prompt")
+        if bool(continue_audio) and int(shot_number) > 1 and "previous_shot" in kw and kw["previous_shot"] is None:
+            need.append("previous_shot")
         return need
 
     def prophesy(self, model, clip, vae, audio_vae, sampler, sigmas, conditioning, latent, bypass, run_every, shot_number,
-                 prophecy_frames, seed, audio_mask, accept, prophecy_latent_folder, lock_accept=False, prophecy_prompt=None):
+                 prophecy_frames, seed, audio_mask, accept, prophecy_latent_folder, lock_accept=False, prophecy_prompt=None,
+                 continue_audio=False, continue_audio_frames=39, previous_shot=None):
         import folder_paths
         import node_helpers
         from comfy_execution.graph import ExecutionBlocker
@@ -1121,7 +1139,9 @@ class H3ClownProphecySampler:
 
         # fingerprints: a saved file is only reused if everything that made it is unchanged
         pp_key = {k: pp.get(k) for k in ("mode", "prompt", "summary", "detailed", "ollama_model", "ending_only")}
-        audio_key = _fingerprint("audio-v1", conditioning, int(seed), shot_frames, sigmas)
+        prev_audio = _audio_of(previous_shot) if (bool(continue_audio) and not forced and shot > 1) else None
+        audio_key = _fingerprint("audio-v2", conditioning, int(seed), shot_frames, sigmas, prev_audio,
+                                 int(continue_audio_frames) if prev_audio is not None else 0)
         ending_key = _fingerprint("ending-v1", conditioning, pp_key, int(seed), F, width, height, shot_frames,
                                   sigmas, lat_audio if forced else None)
 
@@ -1157,13 +1177,17 @@ class H3ClownProphecySampler:
         # ---------------- the ending's conditioning
         mode = pp.get("mode", "as is")
         notes = []
+        carry = _carryover_lines(conditioning)
+        if carry:
+            notes.append("Clown Carryover's picture used (its prompt lines added)")
         if mode == "as is":
             cond = conditioning
-            new_prompt = pp.get("prompt") or "(shot prompt as is)"
+            new_prompt = _add_carryover_lines(pp.get("prompt") or "(shot prompt as is)", carry)
         else:
-            prompt = pp["prompt"]
+            prompt = _add_carryover_lines(pp["prompt"], carry)
             if mode == "manual":
-                new_prompt, notes = _replace_sections(prompt, pp.get("summary", ""), pp.get("detailed", ""), who)
+                new_prompt, more = _replace_sections(prompt, pp.get("summary", ""), pp.get("detailed", ""), who)
+                notes += more
             else:
                 total_s = shot_frames / FPS
                 sliced, mapping, snote = _ending_slice(_get_section(prompt, "detailed_description") or "", total_s, secs)
@@ -1201,12 +1225,13 @@ class H3ClownProphecySampler:
                 anote = "pre-rendered shot audio reused (same prompt and seed)"
             else:
                 lat_a, _ = _empty_av_latent(64, 64, shot_frames)
-                out_a = self._sample(model, conditioning, lat_a, sampler, sigmas, seed)
+                lat_a, held_note = _hold_previous_audio(lat_a, prev_audio, continue_audio_frames, who)
+                out_a = self._sample(model, conditioning, lat_a, sampler, sigmas, seed, preview=False)
                 parts_a = _split(out_a["samples"])
                 wav = audio_vae.decode(parts_a[_audio_index(parts_a)]).movedim(-1, 1)
                 shot_audio = {"waveform": wav.cpu(), "sample_rate": int(getattr(audio_vae, "audio_sample_rate", 44100))}
                 torch.save({"key": audio_key, "audio": shot_audio}, audio_p)
-                anote = ("shot audio pre-rendered with a 64x64 H3 render and saved"
+                anote = ("shot audio pre-rendered with a 64x64 H3 render and saved" + held_note
                          + (" (the saved one was from a different prompt or seed)" if saved is not None else ""))
         else:
             shot_audio = audio
@@ -1241,6 +1266,71 @@ class H3ClownProphecySampler:
             return {"ui": ui_state(True), "result": ({"samples": out["samples"]}, preview, new_prompt, shot_audio, report) + audio_out(shot_audio)}
         print(report)
         return {"ui": ui_state(False), "result": (ExecutionBlocker(None), preview, new_prompt, shot_audio, report) + audio_out(shot_audio)}
+
+
+def _carryover_lines(conditioning):
+    """The prompt lines Clown Carryover added with its extra reference picture ({} when it didn't)."""
+    for c in conditioning or []:
+        if len(c) > 1 and isinstance(c[1], dict):
+            if c[1].get("clown_carryover_lines"):
+                return c[1]["clown_carryover_lines"]
+            if c[1].get("clown_carryover_line"):  # older Clown Carryover
+                return {"subject_definitions": c[1]["clown_carryover_line"]}
+    return {}
+
+def _add_carryover_lines(prompt, lines):
+    """Each line at the end of its section (a missing subject_definitions goes on top; other missing sections are skipped)."""
+    for name in ("subject_definitions", "retention_analysis"):
+        line = lines.get(name)
+        if not line or line in prompt:
+            continue
+        body = _get_section(prompt, name)
+        if body is None:
+            if name == "subject_definitions":
+                prompt = line + "\n\n" + prompt
+            continue
+        prompt, _ = _set_section(prompt, name, body.rstrip() + "\n" + line)
+    return prompt
+
+def _audio_of(latent):
+    """Audio part of a saved shot latent (Load Latent's output), or None (nothing loaded / no sound)."""
+    if not _has_samples(latent):
+        return None
+    s = latent["samples"]
+    if isinstance(s, (list, tuple)):
+        s = [p for p in s if p is not None]
+    parts = _split(s)
+    ai = _audio_index(parts)
+    if ai is None:
+        return None
+    a = parts[ai]
+    if a.ndim < 3 or float(a.abs().max()) < 1e-6:
+        return None
+    return a.contiguous()
+
+def _hold_previous_audio(lat, prev_audio, frames, who):
+    """Put the previous shot's last `frames` frames of audio at the start of the latent's audio, mask 0 there."""
+    if prev_audio is None:
+        return lat, ""
+    parts = _split(lat["samples"])
+    ai = _audio_index(parts)
+    if ai is None:
+        return lat, ""
+    ta, sa = parts[ai], prev_audio
+    if sa.ndim == ta.ndim - 1:
+        sa = sa.unsqueeze(0)
+    if sa.shape[1:-1] != ta.shape[1:-1]:
+        print(f"[{who}] previous shot's audio {tuple(sa.shape)} doesn't match {tuple(ta.shape)} - sound made fresh")
+        return lat, ""
+    n = min(_audio_steps(int(frames)), _audio_len(sa), _audio_len(ta))
+    if n <= 0:
+        return lat, ""
+    ta = ta.clone()
+    ta[..., :n] = sa[..., _audio_len(sa) - n:].to(device=ta.device, dtype=ta.dtype)
+    parts[ai] = ta
+    masks = [torch.ones_like(p) for p in parts]
+    masks[ai][..., :n] = 0.0
+    return _pack(lat, parts, masks, True, who), f", continuing the previous shot's last {n / AUDIO_HZ:.2f}s of sound"
 
 
 # ---- live folder check for the Clown Shot Counter display

@@ -229,6 +229,25 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function () {
                 const r = onCreated?.apply(this, arguments);
                 const node = this, acc = W(node, "accept"), lock = W(node, "lock_accept");
+                // continue_audio_frames <- Clown Context head_frames (hidden)
+                const ctx = () => {
+                    const all = allNodes().filter((n) => /ClownContext/.test(n.comfyClass || n.type || ""));
+                    return all.length ? all[0] : null;
+                };
+                for (const [name, from] of [["continue_audio_frames", () => ctx()?.widgets?.find((x) => x.name === "head_frames")]]) {
+                    const w = W(node, name);
+                    if (!w) continue;
+                    const prev = w.serializeValue;
+                    w.serializeValue = async function () {
+                        const src = from();
+                        if (src && src.value !== undefined && src.value !== "") w.value = src.value;
+                        return prev ? await prev.apply(this, arguments) : w.value;
+                    };
+                    w.hidden = true;
+                    w.computeSize = () => [0, -4];
+                    w.draw = () => {};
+                }
+                requestAnimationFrame(() => node.setSize?.([node.size[0], node.computeSize()[1]]));
                 if (acc && lock) {
                     const lcb = lock.callback;
                     lock.callback = function (v) {
@@ -250,7 +269,7 @@ app.registerExtension({
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function (info) {
                 const r = onConfigure?.apply(this, arguments);
-                // widget order is ... accept, lock_accept, prophecy_latent_folder. Fix workflows saved in older orders:
+                // widget order is ... accept, lock_accept, (continue_audio, continue_audio_frames,) prophecy_latent_folder. Fix workflows saved in older orders:
                 //   before lock_accept existed: ... accept, folder          (accept used to stay on -> lock = accept)
                 //   first lock_accept version:  ... accept, folder, lock
                 const acc = W(this, "accept"), lock = W(this, "lock_accept"), folder = W(this, "prophecy_latent_folder");
@@ -259,6 +278,15 @@ app.registerExtension({
                 if (acc && lock && folder && Array.isArray(vals) && ia >= 0 && typeof vals[ia + 1] === "string") {
                     folder.value = vals[ia + 1];
                     lock.value = typeof vals[ia + 2] === "boolean" ? vals[ia + 2] : !!vals[ia];
+                }
+                // now ... lock_accept, continue_audio, continue_audio_frames, folder. Saved before the move:
+                //   ... lock_accept, folder [, continue_audio, continue_audio_frames]
+                const ca = W(this, "continue_audio"), caf = W(this, "continue_audio_frames");
+                if (acc && lock && folder && ca && Array.isArray(vals) && ia >= 0 && typeof vals[ia + 1] === "boolean"
+                    && typeof vals[ia + 2] === "string") {
+                    folder.value = vals[ia + 2];
+                    ca.value = typeof vals[ia + 3] === "boolean" ? vals[ia + 3] : false;
+                    if (caf) caf.value = typeof vals[ia + 4] === "number" ? vals[ia + 4] : 39;
                 }
                 return r;
             };
