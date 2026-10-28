@@ -202,17 +202,19 @@ Rule that works:
 
 ### Joining the clips
 
-Each clip is saved whole (all of its frames, overlap included), so trim them when you join them in your editor. `drop_last` doesn't remove the overlap, it only changes what's in it. With Clown Context at 39, `drop_last` 17:
+Each clip is saved whole (all of its frames, overlap included), so trim them when you join them. `drop_last` doesn't remove the overlap, it only changes what's in it. With Clown Context at 39, `drop_last` 17:
 
 - The new shot's frames 0-21 are exact copies of the previous shot's frames 153-174 (the held part).
 - The new shot's frames 22-38 are freshly made, but they cover the same moment as the previous shot's frames 175-191 (the dropped part).
 
-So the two clips still share 39 frames of time: 22 identical, and 17 that are two different takes of the same moment. Butted together untrimmed, that moment plays twice. Trim one of two ways:
+So the two clips still share 39 frames of time: 22 identical, and 17 that are two different takes of the same moment. Butted together untrimmed, that moment plays twice. Cut so the join lands inside the identical part, then it's seamless:
 
-1. Cut the first 39 frames off every clip after the first (you keep the previous shot's ending).
-2. Cut the last 17 frames off each clip and the first 22 off the next (you keep the new shot's take). Use this when you'd rather keep the new shot's version of those frames.
+1. **Cut the last 39 frames off every clip except the last one** (the default). The previous clip ends on frame 152 and the next one starts on its frame 0, which is an exact copy of frame 153.
+2. **Cut the last 17 frames off each clip and the first 22 off the next.** The previous clip ends on frame 174 and the next one carries on from its frame 22. Use this if the start of each clip has something you don't want to keep.
 
-Clip 1 is always kept whole at the start. For other settings, the overlap is `head_frames` and the copied part is `head_frames` minus the drops.
+Don't cut the first 39 frames off the next clip instead: that joins two different takes of the same moment and can show a small jump. The last clip is always kept whole. For other settings, the overlap is `head_frames` and the identical part is `head_frames` minus the drops.
+
+**[Seamless Video Combiner](https://github.com/roycho87/seamless_video_combiner)** does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for the Clown examples: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (way 1). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
 
 ## Example workflows
 
