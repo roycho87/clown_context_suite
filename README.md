@@ -247,8 +247,6 @@ A capstone locked from the start pulls the pose back toward clip 1. Late Lock av
 
 Comparison, clip 10 of the same 10-clip chain: no Keystone (base), keystone front, and keystone front + Late Lock capstone.
 
-<!-- Upload the comparison video here (drag it into this spot when editing on GitHub). -->
-
 In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well.
 
 **Joining:** the grafted frames are clip 1's, not part of the shot, so use the 17 + 22 cut: cut the last 17 frames of each clip and the first 22 of the next. In Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22.
