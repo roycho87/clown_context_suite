@@ -29,6 +29,8 @@ Do this every two shots or so and the quality never drops far enough to notice.
 | **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
 | **Clown Carryover** | On Prophecy shots, adds a frame from an earlier shot as one more reference picture, so the background and layout stay put. Can turn the frame into a canny, depth or pose map first. |
 | **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
+| **Clown Keystone** | Puts clip 1's first frame (keystone) and/or its capstone into every shot, so the colours and look don't drift. |
+| **Clown Late Lock** | Leaves Keystone's capstone free for the first few steps, then locks it, so the shot picks its own pose first. |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
 Everything shows up under the **Clown Context Suite** category.
@@ -214,7 +216,38 @@ So the two clips still share 39 frames of time: 22 identical, and 17 that are tw
 
 Don't cut the first 39 frames off the next clip instead: that joins two different takes of the same moment and can show a small jump. The last clip is always kept whole. For other settings, the overlap is `head_frames` and the identical part is `head_frames` minus the drops.
 
-**[Seamless Video Combiner](https://github.com/roycho87/seamless_video_combiner)** does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for the Clown examples: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (way 1). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
+**[Seamless Video Combiner](https://github.com/roycho87/seamless_video_combiner)** does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for the Clown examples: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
+
+## Clown Keystone and Clown Late Lock
+
+Every shot in a chain is made from the one before it, so small colour and sharpness changes build up. Clown Keystone puts a latent from clip 1 into every shot, so each one is pulled back to how clip 1 looked.
+
+H3 latents come in 17-frame blocks of 1 + 4 + 4 + 4 + 4 frames. The first latent of each block is a single frame on its own:
+
+- **keystone** = clip 1's first latent (frame 0).
+- **capstone** = clip 1's last single-frame latent (frame 187 of a 192-frame clip).
+
+Keystone only swaps those single-frame latents, so nothing else in the shot moves.
+
+| Setting | Meaning |
+|---|---|
+| `enabled` | On / off. |
+| `graft_mask` | 0 = kept exactly (default). 0.2-0.3 = kept roughly. 1 = ignored. |
+| `source_clip` | The clip the keystone and capstone come from (1). On that shot and earlier nothing is grafted. Only used when `shot_number` is plugged in. |
+| `placement` | `keystone front` (default), `keystone front + back`, `capstone front + back`, `keystone front + capstone back`. front = the shot's first latent, back = its last single-frame latent. |
+
+| Input | Meaning |
+|---|---|
+| `clip 1 (keystone / capstone)` | A Load Latent fixed on clip 1. Keep it **outside** the Chain group so the Chain buttons don't change its number. |
+| `shot_number` | From Clown Shot Counter. On shot 1 clip 1 isn't loaded (it doesn't exist yet). |
+
+**Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. For the first `swap_step` steps (default 4) the grafted slot is free, so the shot decides its own motion and pose. From the next step on it's locked to what Keystone put there. `slots` picks which slot: `capstone slot (back)` (default), `keystone slot (front)`, or both. It only touches slots Keystone actually filled, so on shot 1 it does nothing.
+
+A capstone locked from the start pulls the pose back toward clip 1. Late Lock avoids that.
+
+In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well.
+
+**Joining:** the grafted frames are clip 1's, not part of the shot, so use the 17 + 22 cut: cut the last 17 frames of each clip and the first 22 of the next. In Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22.
 
 ## Example workflows
 
@@ -239,6 +272,10 @@ https://github.com/user-attachments/assets/6e446991-2ac2-4c9a-b476-169040baf0ce
 `example_workflows/sane_clown_example.json` is the Clown Chain example with **Clown Carryover** added. The Prophecy Sampler's `previous_shot` is wired, so you can turn `continue_audio` on. It runs the same way: write the prompt, press **Chain**. Carryover adds the first clip's last frame as a scene reference on every Prophecy shot (`frame_source` = `selected clip`, `clip_number` 1). Plug its `frame` output into the Preview Image to see what it added.
 
 The model group also has ComfyUI's **Model Attention Backend** node (comfy kitchen attention), bypassed. It does the same job as the Sage attention patch, so turn on one or the other.
+
+### Mad Clown Inventor example
+
+`example_workflows/mad_clown_inventor_example.json` is the Clown Chain example with Prophecy and Anchoring taken out and **Clown Keystone** + **Clown Late Lock** put in: just Clown Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back`, and Late Lock on the capstone at step 4. It runs the same way: write the prompt, press **Chain**. Join the clips with the 17 + 22 cut (see above).
 
 ### Vlog example
 
