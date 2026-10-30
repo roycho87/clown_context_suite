@@ -233,7 +233,7 @@ H3 latents come in 17-frame blocks of 1 + 4 + 4 + 4 + 4 frames. The first latent
 - **keystone** = clip 1's first latent (frame 0).
 - **capstone** = clip 1's last single-frame latent (frame 187 of a 192-frame clip).
 
-- **Front:** the keystone (or capstone) is locked into the shot's latent 0. With `restore` on, the chain's real latent 0 is put back into the output after sampling, so the saved latent and the video keep the real frame.
+- **Front:** the keystone (or capstone) is locked into the shot's latent 0. After sampling, the chain's real latent 0 is always put back into the output, so the saved latent and the video keep the real frame.
 - **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output. It sits in a 4-frame latent slot.
 
 Restore and the back both need the model, so plug the model through Keystone (model in, model out to the guider) or use Clown Late Lock.
@@ -244,7 +244,6 @@ Restore and the back both need the model, so plug the model through Keystone (mo
 | `graft_mask` | 0 = kept exactly (default). 0.2-0.3 = kept roughly. 1 = ignored. |
 | `source_clip` | The clip the keystone and capstone come from (1). On that shot and earlier nothing is grafted. Only used when `shot_number` is plugged in. |
 | `placement` | `keystone front` (default), `keystone front + back`, `capstone front + back`, `keystone front + capstone back`. front = written into the shot's first latent, back = tacked on after the shot's end. |
-| `restore` | On (default) = put the chain's real latent 0 back after sampling. Only when Clown Context was holding it. |
 
 | Input | Meaning |
 |---|---|
@@ -267,7 +266,7 @@ https://github.com/user-attachments/assets/3002019d-7d6d-4afc-9592-09a3c201fb78
 
 In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well. (That test used the earlier version, which wrote the capstone into the shot's last single-frame slot instead of tacking it on.)
 
-**Joining:** with `restore` on and the model plugged through Keystone or Late Lock, nothing from clip 1 ends up in the saved clips, so join them the normal way (cut the last 39 frames of each clip). With `restore` off, latent 0 is clip 1's frame, so use the 17 + 22 cut instead: cut the last 17 frames of each clip and the first 22 of the next (Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22).
+**Joining:** with the model plugged through Keystone or Late Lock, nothing from clip 1 ends up in the saved clips, so join them the normal way (cut the last 39 frames of each clip). Without the model, latent 0 can't be put back and stays clip 1's frame, so use the 17 + 22 cut instead: cut the last 17 frames of each clip and the first 22 of the next (Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22).
 
 ## Example workflows
 

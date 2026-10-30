@@ -6,7 +6,7 @@ Clown Keystone uses latents from a clean clip (normally clip 1) in every shot:
   57-latent clip = frame 187).
 Placement options: keystone front (default), keystone front + back, capstone front + back, keystone front + capstone back.
 
-Front: written into the shot's latent 0, locked. With restore on, the chain's real latent 0 is put back into the
+Front: written into the shot's latent 0, locked. The chain's real latent 0 is always put back into the
 output after sampling, so the saved latent and the video keep the real frame.
 Back: not written into the shot. It's tacked onto the back of the video for each model call (locked) and cut off
 again, so nothing in the shot is replaced. At the back it lands in a 4-frame latent slot.
@@ -162,10 +162,6 @@ class H3ClownKeyframe:
                 "shot_number": ("INT", {"forceInput": True, "tooltip": "From Clown Shot Counter. Skips the first shot."}),
                 "model": ("MODEL", {"tooltip": "Optional: plug the model through here (model out -> guider / Late Lock) so "
                                                "the chain's real latent 0 is put back into the output after sampling."}),
-                "restore": ("BOOLEAN", {"default": True, "label_on": "on - put the real latent 0 back after sampling",
-                                        "label_off": "off - keep the keystone in the output",
-                                        "tooltip": "Needs the model plugged through Keystone or Late Lock. Only latent 0 "
-                                                   "is restored, and only when Clown Context was holding it."}),
             },
         }
 
@@ -177,7 +173,7 @@ class H3ClownKeyframe:
         return ["keyframe"] if keyframe is None else []
 
     def graft(self, latent, enabled=True, keyframe_mask=0.0, first_shot=1, keyframe=None, shot_number=None,
-              placement="keystone front", model=None, restore=True):
+              placement="keystone front", model=None, **_old):
         who = "Clown Keystone"
         if not bool(enabled):
             print(f"[{who}] off - latent passed through")
@@ -237,21 +233,18 @@ class H3ClownKeyframe:
         out["clown_keyframe_slots"] = [int(dst) for dst, _ in slots]   # tells Clown Late Lock what was grafted
         if back_lat is not None:
             out["clown_keyframe_back"] = back_lat                       # tacked on by the model patch, never written in
-        if bool(restore) and held_0:
-            out["clown_keyframe_originals"] = {0: original_0}             # put back after sampling
+        if held_0:
+            out["clown_keyframe_originals"] = {0: original_0}             # always put back after sampling
         print(f"[{who}] shot {shot_number}: {placement}: {note} (mask {keyframe_mask})")
-        if bool(restore):
-            if not held_0:
-                print(f"[{who}] latent 0 wasn't held by Clown Context, nothing to restore")
-            elif model is None:
-                print(f"[{who}] restore is on: plug the model through Keystone or Late Lock to put latent 0 back")
+        if held_0 and model is None:
+            print(f"[{who}] plug the model through Keystone or Late Lock to put the real latent 0 back after sampling")
         m = model
         if back_lat is not None:
             if model is None:
                 print(f"[{who}] the back needs the model plugged through Keystone or Clown Late Lock")
             else:
                 m = _set_tack(m, back_lat, 0, who)
-        return (out, _add_restore(m, out, who) if bool(restore) else m)
+        return (out, _add_restore(m, out, who))
 
 
 LOCK_SLOTS = ["capstone slot (back)", "keystone slot (front)", "keystone + capstone slots"]
