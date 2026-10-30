@@ -12,11 +12,17 @@ Clown Context Suite stands on the work of **seitanism** and **nikodemon**, who c
 
 When you chain H3 clips, each new clip starts from the tail of the last one. You tell the model where to start, but never where to end. Detail is lost a little in every clip, and because each clip starts from the one before, the loss stacks up over the chain.
 
-## The fix: Clown Prophecy
+## The fix: Clown Keystone (recommended)
 
-Give the model a target. Before a shot is rendered, **Clown Prophecy Sampler** renders a short, clean ending for that shot from the shot's own prompt and reference pictures. **Clown Anchoring** pins that ending to the back of the shot, so the shot has to land on good-quality frames. **Clown Context** pins the previous shot's tail to the front, so the motion carries over.
+Pull every shot back to clip 1. **Clown Context** pins the previous shot's tail to the front of each shot, so the motion carries over. **Clown Keystone** locks clip 1's first frame into the start of every shot and tacks clip 1's capstone onto the back, and **Clown Late Lock** brings the capstone in only for the last steps, so the shot picks its own pose first. Every shot is pulled back toward how clip 1 looked, so the loss can't stack up, and the real frames are put back afterwards so nothing from clip 1 ends up in the clips.
 
-Do this every two shots or so and the quality never drops far enough to notice.
+It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/mad_clown_inventor_example.json`. See [Clown Keystone and Clown Late Lock](#clown-keystone-and-clown-late-lock).
+
+## The other fix: Clown Prophecy
+
+Give the model a target. Before a shot is rendered, **Clown Prophecy Sampler** renders a short, clean ending for that shot from the shot's own prompt and reference pictures. **Clown Anchoring** pins that ending to the back of the shot, so the shot has to land on good-quality frames.
+
+Do this every two shots or so and the quality never drops far enough to notice. Use it when you also want to steer where each shot ends up; it needs a local language model and an extra render on the shots it runs.
 
 ## Nodes
 
