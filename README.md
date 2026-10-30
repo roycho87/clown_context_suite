@@ -30,7 +30,7 @@ Do this every two shots or so and the quality never drops far enough to notice.
 | **Clown Carryover** | On Prophecy shots, adds a frame from an earlier shot as one more reference picture, so the background and layout stay put. Can turn the frame into a canny, depth or pose map first. |
 | **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
 | **Clown Keystone** | Puts clip 1's first frame (keystone) and/or its capstone into every shot, so the colours and look don't drift. |
-| **Clown Late Lock** | Leaves Keystone's capstone free for the first few steps, then locks it, so the shot picks its own pose first. |
+| **Clown Late Lock** | Holds Keystone's capstone slot empty for the first few steps, then locks the capstone in, so the shot picks its own pose first. |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
 Everything shows up under the **Clown Context Suite** category.
@@ -241,7 +241,7 @@ Keystone only swaps those single-frame latents, so nothing else in the shot move
 | `clip 1 (keystone / capstone)` | A Load Latent fixed on clip 1. Keep it **outside** the Chain group so the Chain buttons don't change its number. |
 | `shot_number` | From Clown Shot Counter. On shot 1 clip 1 isn't loaded (it doesn't exist yet). |
 
-**Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. For the first `swap_step` steps (default 4) the grafted slot is free, so the shot decides its own motion and pose. From the next step on it's locked to what Keystone put there. `slots` picks which slot: `capstone slot (back)` (default), `keystone slot (front)`, or both. It only touches slots Keystone actually filled, so on shot 1 it does nothing.
+**Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. For the first `swap_step` steps (default 4) the grafted slot is held empty: it stays as noise the model doesn't change, so nothing pulls on her motion and pose while the shot decides them. From the next step on it's locked to what Keystone put there. `slots` picks which slot: `capstone slot (back)` (default), `keystone slot (front)`, or both. It only touches slots Keystone actually filled, so on shot 1 it does nothing.
 
 A capstone locked from the start pulls the pose back toward clip 1. Late Lock avoids that.
 

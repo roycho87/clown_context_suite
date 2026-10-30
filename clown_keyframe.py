@@ -10,8 +10,8 @@ front = this shot's latent 0, back = this shot's last single-frame slot.
 H3 latents come in 17-frame blocks of (1, 4, 4, 4, 4) frames, so only that one single-frame latent is replaced and the
 block alignment doesn't change.
 
-Clown Late Lock leaves the grafted slot(s) free for the first few steps, then locks them for the rest, so the shot
-decides its own motion and pose before the graft pulls on it.
+Clown Late Lock holds the grafted slot(s) empty for the first few steps, then locks the graft in for the rest, so the
+shot decides its own motion and pose before the graft pulls on it.
 
 Stitching: the grafted frames aren't part of the continuation, so cut the last 17 frames of each shot and the first 22
 of the next (Seamless Video Combiner: Use Beginning pair on, Beginning Overlap 39, Beginning Join 22).
@@ -137,16 +137,16 @@ _OLD_SLOTS = {"back": LOCK_SLOTS[0], "front": LOCK_SLOTS[1], "front + back": LOC
 
 
 class H3ClownLateLock:
-    """Keeps Clown Keystone's grafted slot(s) FREE for the first swap_step steps, then locks them for the rest."""
+    """Holds Clown Keystone's grafted slot(s) empty for the first swap_step steps, then locks the graft in for the rest."""
 
     CATEGORY = CATEGORY
     RETURN_TYPES = ("MODEL", "LATENT")
     RETURN_NAMES = ("model", "latent")
     FUNCTION = "patch"
     DESCRIPTION = ("Put it between Clown Keystone and the sampler: latent from Clown Keystone in, latent out to the sampler; "
-                   "model in, model out to the guider. For the first swap_step steps the chosen slot(s) generate freely "
-                   "(so motion and pose are decided with nothing pulling); from then on they're locked to what Clown "
-                   "Keystone put there (re-noised to each step's level by the sampler, so it blends in).")
+                   "model in, model out to the guider. For the first swap_step steps the chosen slot(s) are held empty "
+                   "(left as noise the model doesn't change, so nothing pulls on motion and pose while they're decided); "
+                   "from then on they're locked to what Clown Keystone put there.")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -154,7 +154,7 @@ class H3ClownLateLock:
             "model": ("MODEL",),
             "latent": ("LATENT", {"tooltip": "From Clown Keystone (passed through to the sampler)."}),
             "swap_step": ("INT", {"default": 4, "min": 0, "max": 200,
-                                  "tooltip": "Steps the slot stays free before it's locked. 4 of 8 = free for steps 1-4, locked for 5-8. "
+                                  "tooltip": "Steps the slot is held empty before the graft locks in. 4 of 8 = empty for steps 1-4, locked for 5-8. "
                                              "0 = locked from the start (same as plain Clown Keystone)."}),
             "slots": (LOCK_SLOTS, {"default": LOCK_SLOTS[0],
                                    "tooltip": "capstone slot = the shot's last single-frame slot (back). keystone slot = latent 0 "
@@ -204,7 +204,7 @@ class H3ClownLateLock:
         m.model_options["denoise_mask_function"] = fn
         if latent.get("noise_mask") is None:
             print(f"[{who}] warning: the latent has no noise mask, so nothing can be locked")
-        print(f"[{who}] {slots} slot(s) {idx}: free for steps 1-{step}, locked from step {step + 1}")
+        print(f"[{who}] {slots} slot(s) {idx}: held empty for steps 1-{step}, locked from step {step + 1}")
         return (m, latent)
 
 
