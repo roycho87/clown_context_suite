@@ -29,8 +29,8 @@ Do this every two shots or so and the quality never drops far enough to notice.
 | **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
 | **Clown Carryover** | On Prophecy shots, adds a frame from an earlier shot as one more reference picture, so the background and layout stay put. Can turn the frame into a canny, depth or pose map first. |
 | **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
-| **Clown Keystone** | Puts clip 1's first frame (keystone) and/or its capstone into every shot, so the colours and look don't drift. |
-| **Clown Late Lock** | Holds Keystone's capstone slot empty for the first few steps, then locks the capstone in, so the shot picks its own pose first. |
+| **Clown Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. Puts the real frame back afterwards. |
+| **Clown Late Lock** | Picks the step Keystone's latents come in: the capstone is tacked onto the back from that step, so the shot picks its own pose first. |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
 Everything shows up under the **Clown Context Suite** category.
@@ -227,21 +227,31 @@ H3 latents come in 17-frame blocks of 1 + 4 + 4 + 4 + 4 frames. The first latent
 - **keystone** = clip 1's first latent (frame 0).
 - **capstone** = clip 1's last single-frame latent (frame 187 of a 192-frame clip).
 
-Keystone only swaps those single-frame latents, so nothing else in the shot moves.
+- **Front:** the keystone (or capstone) is locked into the shot's latent 0. With `restore` on, the chain's real latent 0 is put back into the output after sampling, so the saved latent and the video keep the real frame.
+- **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output. It sits in a 4-frame latent slot.
+
+Restore and the back both need the model, so plug the model through Keystone (model in, model out to the guider) or use Clown Late Lock.
 
 | Setting | Meaning |
 |---|---|
 | `enabled` | On / off. |
 | `graft_mask` | 0 = kept exactly (default). 0.2-0.3 = kept roughly. 1 = ignored. |
 | `source_clip` | The clip the keystone and capstone come from (1). On that shot and earlier nothing is grafted. Only used when `shot_number` is plugged in. |
-| `placement` | `keystone front` (default), `keystone front + back`, `capstone front + back`, `keystone front + capstone back`. front = the shot's first latent, back = its last single-frame latent. |
+| `placement` | `keystone front` (default), `keystone front + back`, `capstone front + back`, `keystone front + capstone back`. front = written into the shot's first latent, back = tacked on after the shot's end. |
+| `restore` | On (default) = put the chain's real latent 0 back after sampling. Only when Clown Context was holding it. |
 
 | Input | Meaning |
 |---|---|
 | `clip 1 (keystone / capstone)` | A Load Latent fixed on clip 1. Keep it **outside** the Chain group so the Chain buttons don't change its number. |
+| `model` | Optional. Plug it through here (model out to the guider) if you don't use Late Lock: then the back is tacked on from step 1 and latent 0 is restored. |
 | `shot_number` | From Clown Shot Counter. On shot 1 clip 1 isn't loaded (it doesn't exist yet). |
 
-**Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. For the first `swap_step` steps (default 4) the grafted slot is held empty: it stays as noise the model doesn't change, so nothing pulls on her motion and pose while the shot decides them. From the next step on it's locked to what Keystone put there. `slots` picks which slot: `capstone slot (back)` (default), `keystone slot (front)`, or both. It only touches slots Keystone actually filled, so on shot 1 it does nothing.
+**Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. `swap_step` (default 4) is when Keystone's latents come in:
+
+- **Capstone (back):** nothing is there for the first `swap_step` steps, then it's tacked onto the back for the rest, so nothing pulls on her motion and pose while the shot decides them.
+- **Keystone (front):** the slot is held empty (left as noise the model doesn't change) for the first `swap_step` steps, then locked in.
+
+`slots` picks which: `capstone slot (back)` (default), `keystone slot (front)`, or both. It only touches what Keystone set up, so on shot 1 it does nothing. Late Lock also does Keystone's restore, so you don't need the model through Keystone as well.
 
 A capstone locked from the start pulls the pose back toward clip 1. Late Lock avoids that.
 
@@ -249,9 +259,9 @@ Comparison, clip 10 of the same 10-clip chain: no Keystone (base), keystone fron
 
 https://github.com/user-attachments/assets/3002019d-7d6d-4afc-9592-09a3c201fb78
 
-In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well.
+In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well. (That test used the earlier version, which wrote the capstone into the shot's last single-frame slot instead of tacking it on.)
 
-**Joining:** the grafted frames are clip 1's, not part of the shot, so use the 17 + 22 cut: cut the last 17 frames of each clip and the first 22 of the next. In Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22.
+**Joining:** with `restore` on and the model plugged through Keystone or Late Lock, nothing from clip 1 ends up in the saved clips, so join them the normal way (cut the last 39 frames of each clip). With `restore` off, latent 0 is clip 1's frame, so use the 17 + 22 cut instead: cut the last 17 frames of each clip and the first 22 of the next (Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22).
 
 ## Example workflows
 
@@ -279,7 +289,7 @@ The model group also has ComfyUI's **Model Attention Backend** node (comfy kitch
 
 ### Mad Clown Inventor example
 
-`example_workflows/mad_clown_inventor_example.json` is the Clown Chain example with Prophecy and Anchoring taken out and **Clown Keystone** + **Clown Late Lock** put in: just Clown Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back`, and Late Lock on the capstone at step 4. It runs the same way: write the prompt, press **Chain**. Join the clips with the 17 + 22 cut (see above).
+`example_workflows/mad_clown_inventor_example.json` is the Clown Chain example with Prophecy and Anchoring taken out and **Clown Keystone** + **Clown Late Lock** put in: just Clown Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back`, and Late Lock on the capstone at step 4. It runs the same way: write the prompt, press **Chain**. Late Lock does the restore, so join the clips the normal way (see above).
 
 ### Vlog example
 
