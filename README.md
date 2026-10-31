@@ -219,6 +219,10 @@ Load your subject picture into Picture 1 and press ComfyUI's Run. The length and
 
 ### Clowns for Picard example
 
+<!-- CLOWNS FOR PICARD VIDEO: drag the video file onto the empty line below (edit this README on GitHub), then delete this comment -->
+
+
+
 `example_workflows/clowns_for_picard.json` is the Clown Coaster example as I actually rendered it: widescreen 1328 × 736 (0.98 MP), 60 seconds (1433 frames) in 8 windows of 226 frames, with more detailed, faster-moving prompts. The 8 prompts are in big **WINDOW 1-8 PROMPT** text boxes in the green group at the bottom, in ride order, so you don't have to type into the small prompt nodes.
 
 Keystone, capstone (`capstone_step` 4), `finished_handoff` and `sound_first` on, `freenoise` off. Load your subject picture into Picture 1 and press ComfyUI's Run. It's a big render (a full minute at almost 1 MP); lower the size if you run out of memory.
