@@ -1,13 +1,10 @@
-// Clown Shot Counter + Clown Prophecy Sampler helpers.
+// Clown Shot Counter helpers. (The Clown Prophecy Sampler part moved to roycho87/Clown-Prophecy-Experimental-.)
 //  increment              -> the counter goes up by 1 each time you hit run (like a seed set to increment)
 //  increment after accept -> the counter goes up by 1 after the Prophecy Sampler finishes an accepted run
 //  decrement              -> the counter goes down by 1 each time you hit run (repair walks back)
 //  fixed                  -> never changes
 //  follow motion context  -> copies Motion Context Save Latent's clip_index when a run is queued (read only)
 //  use_classic_counter off -> the shot is worked out in Python (saved latents + 1); the box just shows it
-// Prophecy's lock_accept: on = accept on and stays on. off = accept off; an accept turned on by hand is used
-// for one Prophecy shot, then switches itself off. Turning accept off by hand unlocks.
-// A Prophecy candidate (accept off) stops a running Chain (Motion Context's or Clown Chain), so it doesn't move past an unsaved shot.
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
@@ -220,91 +217,6 @@ app.registerExtension({
                     const w = this.widgets?.find((x) => x.name === "shot_number");
                     if (w) w.value = Number(shot);
                 }
-                this.setDirtyCanvas?.(true, true);
-            };
-        }
-        if (nodeData.name === "H3ClownProphecySampler") {
-            const W = (node, name) => node.widgets?.find((x) => x.name === name);
-            const onCreated = nodeType.prototype.onNodeCreated;
-            nodeType.prototype.onNodeCreated = function () {
-                const r = onCreated?.apply(this, arguments);
-                const node = this, acc = W(node, "accept"), lock = W(node, "lock_accept");
-                // continue_audio_frames <- Clown Context head_frames (hidden)
-                const ctx = () => {
-                    const all = allNodes().filter((n) => /ClownContext/.test(n.comfyClass || n.type || ""));
-                    return all.length ? all[0] : null;
-                };
-                for (const [name, from] of [["continue_audio_frames", () => ctx()?.widgets?.find((x) => x.name === "head_frames")]]) {
-                    const w = W(node, name);
-                    if (!w) continue;
-                    const prev = w.serializeValue;
-                    w.serializeValue = async function () {
-                        const src = from();
-                        if (src && src.value !== undefined && src.value !== "") w.value = src.value;
-                        return prev ? await prev.apply(this, arguments) : w.value;
-                    };
-                    w.hidden = true;
-                    w.computeSize = () => [0, -4];
-                    w.draw = () => {};
-                }
-                requestAnimationFrame(() => node.setSize?.([node.size[0], node.computeSize()[1]]));
-                if (acc && lock) {
-                    const lcb = lock.callback;
-                    lock.callback = function (v) {
-                        const rr = lcb?.apply(this, arguments);
-                        acc.value = !!lock.value;  // lock on -> accept on, lock off -> accept off
-                        node.setDirtyCanvas?.(true, true);
-                        return rr;
-                    };
-                    const acb = acc.callback;
-                    acc.callback = function (v) {
-                        const rr = acb?.apply(this, arguments);
-                        if (!acc.value && lock.value) lock.value = false;  // accept off by hand -> unlock
-                        node.setDirtyCanvas?.(true, true);
-                        return rr;
-                    };
-                }
-                return r;
-            };
-            const onConfigure = nodeType.prototype.onConfigure;
-            nodeType.prototype.onConfigure = function (info) {
-                const r = onConfigure?.apply(this, arguments);
-                // widget order is ... accept, lock_accept, (continue_audio, continue_audio_frames,) prophecy_latent_folder. Fix workflows saved in older orders:
-                //   before lock_accept existed: ... accept, folder          (accept used to stay on -> lock = accept)
-                //   first lock_accept version:  ... accept, folder, lock
-                const acc = W(this, "accept"), lock = W(this, "lock_accept"), folder = W(this, "prophecy_latent_folder");
-                const vals = info?.widgets_values;
-                const ia = acc ? this.widgets.indexOf(acc) : -1;
-                if (acc && lock && folder && Array.isArray(vals) && ia >= 0 && typeof vals[ia + 1] === "string") {
-                    folder.value = vals[ia + 1];
-                    lock.value = typeof vals[ia + 2] === "boolean" ? vals[ia + 2] : !!vals[ia];
-                }
-                // now ... lock_accept, continue_audio, continue_audio_frames, folder. Saved before the move:
-                //   ... lock_accept, folder [, continue_audio, continue_audio_frames]
-                const ca = W(this, "continue_audio"), caf = W(this, "continue_audio_frames");
-                if (acc && lock && folder && ca && Array.isArray(vals) && ia >= 0 && typeof vals[ia + 1] === "boolean"
-                    && typeof vals[ia + 2] === "string") {
-                    folder.value = vals[ia + 2];
-                    ca.value = typeof vals[ia + 3] === "boolean" ? vals[ia + 3] : false;
-                    if (caf) caf.value = typeof vals[ia + 4] === "number" ? vals[ia + 4] : 39;
-                }
-                return r;
-            };
-            const onExecuted = nodeType.prototype.onExecuted;
-            nodeType.prototype.onExecuted = function (output) {
-                onExecuted?.apply(this, arguments);
-                const state = output?.prophecy?.[0];
-                if (!state) return;
-                if (!state.accepted) {  // candidate rendered, the rest is stopped: don't let Chain move past this shot
-                    stopChains();
-                    this.setDirtyCanvas?.(true, true);
-                    return;
-                }
-                const acc = W(this, "accept"), lock = W(this, "lock_accept");
-                if (state.used && acc && lock && !lock.value) acc.value = false;  // unlocked: one use only
-                const counter = counterFor(this);
-                const mode = counter?.widgets?.find((x) => x.name === "shot_counter")?.value;
-                if (mode === "increment after accept") bump(counter);
                 this.setDirtyCanvas?.(true, true);
             };
         }

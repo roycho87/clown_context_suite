@@ -6,7 +6,6 @@ import { app } from "../../scripts/app.js";
 const CTX = "🎈", ANC = "🤡";
 const GROUPS = {
     H3ClownContextExperimental: [{ icon: CTX, total: "head_frames", drops: ["drop_first", "drop_last"] }],
-    H3BlockTailAnchorExperimental: [{ icon: ANC, total: "tail_frames", drops: ["drop_first", "drop_last"] }],
 };
 
 function refresh(node) {

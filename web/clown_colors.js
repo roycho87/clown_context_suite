@@ -4,13 +4,9 @@ import { app } from "../../scripts/app.js";
 
 const CLOWN_NODES = new Set([
     "H3ClownContextExperimental",
-    "H3BlockTailAnchorExperimental",
-    "H3ClownProphecySampler",
-    "H3ClownProphecyPrompt",
     "H3ClownShotCounter",
     "H3ClownForceAudio",
     "H3ClownChain",
-    "H3ClownCarryover",
     "H3ClownKeyframe",
     "H3ClownLateLock",
     "H3ClownHybridWindows",
