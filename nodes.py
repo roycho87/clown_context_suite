@@ -4,10 +4,11 @@ Clown Context Suite for MiniMax H3
 Chained continuation for MiniMax H3 in ComfyUI.
 
     Clown Context           previous shot's TAIL -> this shot's HEAD (video and audio)
+    Clown Anchoring         a source's HEAD      -> this shot's TAIL (video and audio)
     Clown Shot Counter      shot number: classic counter, or counted from saved latents
     Clown Force Audio       puts a real sound track into the latent so the sampler keeps it
 
-(Clown Anchoring, Clown Prophecy and Clown Carryover moved to roycho87/Clown-Prophecy-Experimental-.)
+(Clown Prophecy and Clown Carryover moved to roycho87/Clown-Prophecy-Experimental-.)
 
 The anchor nodes copy real latents into the starting latent at MATCHING BLOCK
 POSITIONS (FRAME_PER_TOKEN = (1, 4, 4, 4, 4) from frame 0; 17-frame blocks) and set
@@ -360,6 +361,154 @@ class H3ClownContextExperimental:
         return (out,)
 
 
+class H3BlockTailAnchorExperimental:
+    """Next shot's head held at the end of this shot, video and audio."""
+
+    CATEGORY = CATEGORY
+    RETURN_TYPES = ("LATENT",)
+    RETURN_NAMES = ("av_latent",)
+    FUNCTION = "anchor"
+    DESCRIPTION = (
+        "Holds the source's first frames at the end of this shot, in matching block positions, "
+        "masked so the sampler keeps them. Audio is held too. drop_last / drop_first trim the "
+        "held window from either end. With shot_number plugged in, next_shot isn't loaded at all on the "
+        "first shot (so a Load Latent of a clip that doesn't exist yet never runs)."
+    )
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        req = {
+            "latent": ("LATENT", {"tooltip": "Starting AV latent that goes into the sampler."}),
+            "tail_frames": ("INT", {"default": 39, "min": 5, "max": 124, "step": 17, "round": 1,
+                                    "tooltip": "Window in frames: this shot's last tail_frames frames line up with the "
+                                               "source's frames 0..tail_frames-1."}),
+            "drop_last": ("INT", {"default": 17, "min": 0, "max": 4096, "step": 17,
+                                   "tooltip": "Frames dropped from the END (last frames) (the end of this shot) and generated freely, "
+                                              + DROP_TIP + " 39 with 17 -> source 0-21 held in this shot's 204-225; 226-242 free."}),
+            "drop_first": ("INT", {"default": 0, "min": 0, "max": 4096, "step": 17,
+                                  "tooltip": "Frames dropped from the BEGINNING (the earliest frames of the window) and generated freely, "
+                                             + DROP_TIP + " 39 with 17 -> source 17-38 held in this shot's 221-242; 204-220 free."}),
+            "hold_audio": ("BOOLEAN", {"default": True,
+                                       "tooltip": "Hold the source's audio over the pinned video. Off = video only, audio is regenerated."}),
+        }
+        req.update(AUDIO_INPUTS)
+        req["first_shot"] = ("INT", {"default": 1, "min": -9999, "max": 99999,
+                                     "tooltip": "Number of the first shot of your run. On that shot (or earlier) next_shot isn't "
+                                                "loaded and the latent passes through. Only used when shot_number is plugged in."})
+        return {
+            "required": req,
+            "optional": {
+                "next_shot": ("LATENT", {"lazy": True,
+                                         "tooltip": "Source latent (next shot / refined tail), list or packed. If empty, the latent passes through. "
+                                                    "Not loaded at all on the first shot when shot_number is plugged in."}),
+                "shot_number": ("INT", {"forceInput": True,
+                                        "tooltip": "Optional. Connect your Shot Number to skip the first shot. If left empty, "
+                                                   "Anchoring works as before."}),
+            },
+        }
+
+    def check_lazy_status(self, first_shot=1, shot_number=None, next_shot=None, **kw):
+        # first shot: don't run whatever feeds next_shot (e.g. a Load Latent of clip 1 that isn't made yet)
+        if shot_number is not None and int(shot_number) <= int(first_shot):
+            return []
+        return ["next_shot"] if next_shot is None else []
+
+    def anchor(self, latent, tail_frames, drop_last=17, drop_first=0, hold_audio=True,
+               audio_frames=0, audio_feather_ticks=0, next_shot=None, first_shot=1, shot_number=None):
+        who = "Clown Anchoring Experimental"
+        if shot_number is not None and int(shot_number) <= int(first_shot):
+            print(f"[{who}] shot {shot_number} is the first shot (first_shot = {first_shot}) - next_shot not loaded, latent passed through unchanged")
+            return (latent,)
+        if not _has_samples(next_shot):
+            print(f"[{who}] no next shot latent - latent passed through unchanged")
+            return (latent,)
+        samples = latent["samples"]
+        packed = NestedTensor is not None and isinstance(samples, NestedTensor)
+        parts = _split(samples)
+        vi = max(range(len(parts)), key=lambda i: parts[i].ndim)
+        video = parts[vi]
+        if video.ndim != 5:
+            raise ValueError(f"{who}: expected a 5-D video latent [B, C, T, H, W], got {tuple(video.shape)}.")
+        src_parts = _split(next_shot["samples"])
+        src = _video_first(src_parts)[0]
+        if src.ndim != 5 or src.shape[1] != video.shape[1] or src.shape[3:] != video.shape[3:]:
+            raise ValueError(
+                f"{who}: source latent {tuple(src.shape)} doesn't match this shot {tuple(video.shape)} "
+                "(same model and resolution needed)."
+            )
+        T, Ts = video.shape[2], src.shape[2]
+        Lt, Ls = _frames_of(T), _frames_of(Ts)
+        F_all = min(_aligned_overlap(tail_frames, Lt), Lt, Ls)
+        if F_all != int(tail_frames):
+            print(f"[{who}] overlap {tail_frames} doesn't start on a block boundary - using {F_all}")
+        kf, kb = _drop_fl(drop_last, drop_first, F_all, who)
+        F = F_all - BLOCK * (kf + kb)
+        n = _latents_in(F_all) - 5 * (kf + kb)
+        if F <= 0 or n <= 0:
+            print(f"[{who}] nothing to hold (overlap {F_all}, drop_last {drop_last}, drop_first {drop_first}) - latent passed through")
+            return (latent,)
+        ws = Lt - F_all                          # this shot's first window frame
+        hs = ws + BLOCK * kf                     # first held frame of this shot
+        sf0 = BLOCK * kf                         # matching source frame
+        d0 = T - _latents_in(F_all) + 5 * kf
+        s0 = 5 * kf
+        video = video.clone()
+        video[:, :, d0:d0 + n] = src[:, :, s0:s0 + n].to(device=video.device, dtype=video.dtype)
+        parts[vi] = video
+
+        masks = _carry_masks(latent, parts, packed, vi)
+        vmask = masks[vi]
+        vmask = torch.ones_like(video) if vmask.shape != video.shape else vmask.clone()
+        vmask[:, :, d0:d0 + n] = 0.0
+        masks[vi] = vmask
+
+        # ---- audio: under the pinned frames, end-aligned with them ----
+        held_audio = 0
+        ai = _audio_index(parts)
+        si = _audio_index(src_parts)
+        if hold_audio and ai is not None and si is not None:
+            ta, sa = parts[ai], src_parts[si]
+            if ta.ndim == 3:
+                ta = ta.unsqueeze(0)
+            if sa.ndim == 3:
+                sa = sa.unsqueeze(0)
+            if ta.shape[1:-1] != sa.shape[1:-1]:
+                print(f"[{who}] audio latent shapes differ ({tuple(sa.shape)} vs {tuple(ta.shape)}) - audio not held")
+            else:
+                want = min(int(audio_frames), F) if int(audio_frames) > 0 else F
+                _grid_note(who, want, "audio window")
+                _overhang_note(who, src, sa, "next shot")
+                # this shot's audio grid is counted back from its end, the source's from its start
+                off = _audio_len(ta) - _audio_steps(Lt)
+                he = hs + F
+                a1 = min(_audio_steps(he) + off, _audio_len(ta))
+                at = _audio_steps(he) - _audio_steps(he - want)
+                src1 = min(_audio_steps(sf0 + F), _audio_len(sa))
+                at = max(0, min(at, a1, src1))
+                a0 = a1 - at
+                if at > 0:
+                    ta = ta.clone()
+                    ta[..., a0:a1] = sa[..., src1 - at:src1].to(device=ta.device, dtype=ta.dtype)
+                    parts[ai] = ta
+                    amask = masks[ai]
+                    amask = torch.ones_like(ta) if amask.shape != ta.shape else amask.clone()
+                    amask[..., a0:a1] = 0.0
+                    _feather(amask, a0, at, audio_feather_ticks, from_end=False)
+                    masks[ai] = amask
+                    held_audio = at
+        elif hold_audio:
+            print(f"[{who}] no audio stream in one of the latents - video only")
+
+        out = _pack(latent, parts, masks, packed, who)
+        extra = (f", audio {held_audio} steps ({held_audio / AUDIO_HZ:.2f}s)"
+                 + (f" with a {audio_feather_ticks}-step release" if audio_feather_ticks else "")
+                 if held_audio else ", no audio held")
+        print(f"[{who}] held latents {d0}..{d0 + n - 1} = frames {hs}..{hs + F - 1} "
+              f"<- source frames {sf0}..{sf0 + F - 1} "
+              f"(drop_last {BLOCK * kb}, drop_first {BLOCK * kf}){extra}")
+        return (out,)
+
+
 # --------------------------------------------------------------------------- anchoring (tail)
 
 
@@ -552,12 +701,14 @@ except Exception as _e:
 
 NODE_CLASS_MAPPINGS = {
     "H3ClownContextExperimental": H3ClownContextExperimental,
+    "H3BlockTailAnchorExperimental": H3BlockTailAnchorExperimental,
     "H3ClownShotCounter": H3ClownShotCounter,
     "H3ClownForceAudio": H3ClownForceAudio,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "H3ClownContextExperimental": "Clown Context",
+    "H3BlockTailAnchorExperimental": "Clown Anchoring",
     "H3ClownShotCounter": "Clown Shot Counter",
     "H3ClownForceAudio": "Clown Force Audio",
 }

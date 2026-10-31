@@ -4,6 +4,7 @@ import { app } from "../../scripts/app.js";
 
 const CLOWN_NODES = new Set([
     "H3ClownContextExperimental",
+    "H3BlockTailAnchorExperimental",
     "H3ClownShotCounter",
     "H3ClownForceAudio",
     "H3ClownChain",

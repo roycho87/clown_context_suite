@@ -22,13 +22,14 @@ It's the simplest way to run a long chain: no language model and no extra render
 
 ## Clown Prophecy has moved
 
-Clown Prophecy (with Clown Anchoring, Clown Carryover and the Prophecy example workflows) now lives in its own repo: [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-). Clown Prophecy was moved there because it is too inconsistent and experimental to be considered a finished node. Keystone and Capstone are a much more promising direction.
+Clown Prophecy (with Clown Carryover and the Prophecy example workflows) now lives in its own repo: [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-). Clown Prophecy was moved there because it is too inconsistent and experimental to be considered a finished node. Keystone and Capstone are a much more promising direction.
 
 ## Nodes
 
 | Node | What it does |
 |---|---|
 | **Clown Context** | Holds the previous shot's last frames (and audio) at the start of this shot. |
+| **Clown Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug any source into `next_shot`, e.g. an ending from Clown Prophecy (in its own repo now). |
 | **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
 | **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
 | **Clown Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. Puts the real frame back afterwards. |
@@ -70,16 +71,24 @@ On the first shot Clown Context doesn't run the Load Latent node at all, so Mult
 
 Set the counter's `shot_counter` to **follow motion context**. The counter then copies the `clip_index` from the Motion Context **Save Latent** node every run, so the shot number lines up with the Chain node's count (Clown Chain or Motion Context's Chain). The counter only reads that number and never changes it; the Chain node stays in charge. Leave Load and Save Latent's `clip_index` as widgets (not wired) so the Chain buttons can move them.
 
-## Clown Context
+## Clown Context and Clown Anchoring
 
-It copies the previous shot's last frames (real latents) into the start of the shot at matching block positions and masks them so the sampler keeps them. Frame counts go 5, 22, 39, 56, 73… (17n + 5); the drop settings go in steps of 17.
+Both copy real latents into the shot at matching block positions and mask them so the sampler keeps them. Frame counts go 5, 22, 39, 56, 73… (17n + 5); the drop settings go in steps of 17.
 
 - `head_frames` (Context) is the overlap with the previous shot. If you use pre-split audio, set it to the audio overlap (e.g. 39).
 - `drop_last` / `drop_first` trim the held frames from either end.
 - `hold_audio` holds the audio under the held frames too.
-- `shot_number` / `first_shot`: takes an optional `shot_number` from the Clown Shot Counter. On the first shot it doesn't load the previous shot at all and passes the latent through. Leave it unplugged and it works as before.
+- `shot_number` / `first_shot`: both nodes take an optional `shot_number` from the Clown Shot Counter. On the first shot they don't load their source at all and pass the latent through. Handy when Anchoring's `next_shot` comes from a Load Latent of a clip that isn't made yet. Leave it unplugged and they work as before.
 
-**Recommended settings:** `head_frames` 39, `drop_last` 17.
+**Recommended settings:**
+
+| Node | Frames | Drop |
+|---|---|---|
+| **Clown Context** | `head_frames` 39 | `drop_last` 17 |
+| **Clown Anchoring** | `tail_frames` 56 | `drop_first` 17 |
+
+Rule that works:
+- The Anchoring frames must outnumber the Context frames.
 
 ### Joining the clips
 
