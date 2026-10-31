@@ -195,8 +195,6 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 
 **One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.
 
-**Keystone tip:** the keystone is window 1's first frame. If the video starts somewhere it won't stay (a different scene, a title card), turn `keystone_swap` off or plug a better frame into `detail_latent`.
-
 ## Example workflows
 
 ### Mad Clown Inventor example
