@@ -6,7 +6,6 @@ Chained continuation for MiniMax H3 in ComfyUI.
     Clown Context           previous shot's TAIL -> this shot's HEAD (video and audio)
     Clown Anchoring         a source's HEAD      -> this shot's TAIL (video and audio)
     Clown Shot Counter      shot number: classic counter, or counted from saved latents
-    Clown Force Audio       puts a real sound track into the latent so the sampler keeps it
 
 (Clown Prophecy and Clown Carryover moved to roycho87/Clown-Prophecy-Experimental-.)
 
@@ -512,17 +511,7 @@ class H3BlockTailAnchorExperimental:
 # --------------------------------------------------------------------------- anchoring (tail)
 
 
-
 # --------------------------------------------------------------------------- tail refresh (latent only)
-
-def _video_audio(latent, who):
-    samples = latent["samples"]
-    packed = NestedTensor is not None and isinstance(samples, NestedTensor)
-    parts = _split(samples)
-    vi = max(range(len(parts)), key=lambda i: parts[i].ndim)
-    if parts[vi].ndim != 5:
-        raise ValueError(f"{who}: expected a 5-D video latent [B, C, T, H, W], got {tuple(parts[vi].shape)}.")
-    return parts, packed, vi, _audio_index(parts)
 
 
 # --------------------------------------------------------------------------- reference lock
@@ -532,28 +521,6 @@ def _video_audio(latent, who):
 
 
 # --------------------------------------------------------------------------- Clown Prophecy Sampler
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class H3ClownShotCounter:
@@ -619,67 +586,6 @@ class H3ClownShotCounter:
                 "result": (shot, max(0, shot - 1), shot > 1)}
 
 
-class H3ClownForceAudio:
-    """Puts a real sound track into an H3 AV latent so the sampler keeps it."""
-
-    CATEGORY = CATEGORY
-    RETURN_TYPES = ("LATENT",)
-    RETURN_NAMES = ("av_latent",)
-    FUNCTION = "force"
-    DESCRIPTION = ("Encodes the audio with the H3 audio VAE and puts it in the latent's audio part, cut or padded "
-                   "with silence to the shot length. audio_mask 0 = the sampler keeps it exactly (lip-sync to it), "
-                   "1 = regenerate. Plug the result into Clown Prophecy Sampler's latent: Prophecy then uses this sound "
-                   "and passes it on to the main sampler, also when it's bypassed or skipped.")
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {"required": {
-            "latent": ("LATENT", {"tooltip": "Reference To Video's LATENT output."}),
-            "audio_vae": ("VAE", {"tooltip": "H3 audio VAE."}),
-            "audio": ("AUDIO",),
-            "audio_mask": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-        }}
-
-    def force(self, latent, audio_vae, audio, audio_mask):
-        from comfy_extras.nodes_minimax_h3 import _encode_ref_audio
-        who = "Clown Force Audio"
-        parts, packed, vi, ai = _video_audio(latent, who)
-        if ai is None or ai == vi:
-            raise ValueError(f"{who}: the latent has no audio part (use an H3 AV latent).")
-        a = parts[ai]
-        t = int(a.shape[-1])
-        z, _ = _encode_ref_audio(audio_vae, audio)
-        z = z.to(device=a.device, dtype=a.dtype)
-        if z.ndim == 3 and a.ndim == 4:
-            z = z.unsqueeze(0)
-        n = int(z.shape[-1])
-        if n >= t:
-            z = z[..., :t]
-        else:
-            z = torch.nn.functional.pad(z, (0, t - n))
-        if z.shape != a.shape:
-            raise ValueError(f"{who}: encoded audio {tuple(z.shape)} doesn't fit the latent's audio {tuple(a.shape)}.")
-        parts = list(parts)
-        parts[ai] = z
-        masks = _carry_masks(latent, parts, packed, vi)
-        masks[ai] = torch.full_like(z, float(audio_mask))
-        print(f"[{who}] audio {n} steps ({n / AUDIO_HZ:.2f}s) into a {t}-step shot"
-              + (f", padded with {t - n} steps of silence" if n < t else (f", cut by {n - t} steps" if n > t else ""))
-              + f"; mask {audio_mask}")
-        return (_pack(latent, parts, masks, True, who),)
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ---- live folder check for the Clown Shot Counter display
 try:
     from server import PromptServer
@@ -697,18 +603,14 @@ except Exception as _e:
     print(f"[clown nodes] saved_shot route not registered: {_e}")
 
 
-
-
 NODE_CLASS_MAPPINGS = {
     "H3ClownContextExperimental": H3ClownContextExperimental,
     "H3BlockTailAnchorExperimental": H3BlockTailAnchorExperimental,
     "H3ClownShotCounter": H3ClownShotCounter,
-    "H3ClownForceAudio": H3ClownForceAudio,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "H3ClownContextExperimental": "Clown Context",
     "H3BlockTailAnchorExperimental": "Clown Anchoring",
     "H3ClownShotCounter": "Clown Shot Counter",
-    "H3ClownForceAudio": "Clown Force Audio",
 }

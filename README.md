@@ -35,7 +35,6 @@ Clown Prophecy (with Clown Carryover and the Prophecy example workflows) now liv
 | **Clown Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. Puts the real frame back afterwards. |
 | **Clown Late Lock** | Picks the step Keystone's latents come in: the capstone is tacked onto the back from that step, so the shot picks its own pose first. |
 | **Clowntext Hybrid Windows** | One long render (a minute or more) in overlapping windows, instead of a chain of clips: each window renders its first steps in order, then the last steps are blended over the whole video. Clip 1's keystone and capstone go into every window. |
-| **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
 Everything shows up under the **Clown Context Suite** category.
 
