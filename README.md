@@ -6,6 +6,8 @@ ComfyUI nodes for chaining MiniMax H3 clips without the quality slowly falling a
 
 Clown Context Suite stands on the work of **seitanism** and **nikodemon**, who came before it. I'm just building off their work, so all credit to them for laying the groundwork.
 
+**Clowntext Hybrid Windows** is built on **kijai**'s MiniMax H3 context windows in ComfyUI and works the way **JalenBrunson**'s [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows) does. All credit to them; I just added the keystone and capstone to it, to help everyone make longer videos without degradation. See [Clowntext Hybrid Windows](#clowntext-hybrid-windows).
+
 **Clown Chain** is nikodemon's Chain node from [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), copied in and renamed (GPL-3.0, like this pack). See [Clown Chain](#clown-chain) for why.
 
 ## The problem
@@ -37,6 +39,7 @@ Do this every two shots or so and the quality never drops far enough to notice. 
 | **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
 | **Clown Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. Puts the real frame back afterwards. |
 | **Clown Late Lock** | Picks the step Keystone's latents come in: the capstone is tacked onto the back from that step, so the shot picks its own pose first. |
+| **Clowntext Hybrid Windows** | One long render (a minute or more) in overlapping windows, instead of a chain of clips: each window renders its first steps in order, then the last steps are blended over the whole video. Clip 1's keystone and capstone go into every window. |
 | **Clown Force Audio** | Puts a real sound track (song, voice) into the latent so the sampler keeps it and lip-syncs to it. If the sound is shorter than the shot, the rest of the shot stays silent (stock Concat AV Latent lets the model make up sound there instead). |
 
 Everything shows up under the **Clown Context Suite** category.
@@ -267,6 +270,43 @@ https://github.com/user-attachments/assets/3002019d-7d6d-4afc-9592-09a3c201fb78
 In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well. (That test used the earlier version, which wrote the capstone into the shot's last single-frame slot instead of tacking it on.)
 
 **Joining:** with the model plugged through Keystone or Late Lock, nothing from clip 1 ends up in the saved clips, so join them the normal way (cut the last 39 frames of each clip). Without the model, latent 0 can't be put back and stays clip 1's frame, so use the 17 + 22 cut instead: cut the last 17 frames of each clip and the first 22 of the next (Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22).
+
+## Clowntext Hybrid Windows
+
+### Credits
+
+This node is not my idea. It's built on **kijai**'s MiniMax H3 context windows, which are in ComfyUI now ([PR #17425](https://github.com/Comfy-Org/ComfyUI/pull/17425)), and it works the way **JalenBrunson**'s [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows) does (based on the [Rolling Diffusion](https://arxiv.org/abs/2402.09470) paper). All credit to them. I just added the keystone and capstone feature to it, to help everyone make longer videos without degradation.
+
+### What it does
+
+Instead of chaining clips, it renders the whole video in one go, in overlapping windows, so memory stays at one window:
+
+1. Window 1 renders the first `switch_step` steps, and a snapshot is saved.
+2. Window 1 carries on to the last step, only to get its finished first frame (the **keystone**) and its last single-frame latent (the **capstone**). That finish is thrown away and window 1 goes back to the snapshot.
+3. Windows 2, 3 and on render the first `switch_step` steps one after another. Each one's overlap with the window before is locked to that window's result. The keystone is locked into each window's first slot, and the capstone is tacked onto its back from `capstone_step` on (and cut off again).
+4. The last steps run as blended context windows over the whole video, which smooths the joins.
+
+With keystone and capstone off, it works like plain hybrid windows. In my test (a 60-second render, 17 windows, same seed), the plain version lost a lot of detail by the end and the keystone + capstone version held its detail much better.
+
+Plug the model through it (model in, model out to the guider). It needs a ComfyUI with MiniMax H3 context windows: update ComfyUI if the node is missing.
+
+| Setting | Meaning |
+|---|---|
+| `context_length` / `context_overlap` | Window size and overlap in frames (17n + 5). 124 / 39 is about 5 seconds per window. |
+| `switch_step` | Steps each window renders on its own before the blended finish. 6 of 8 = steps 1-6 window by window, 7-8 blended. |
+| `keystone_swap` | Window 1's finished first frame is locked into the first slot of every later window. |
+| `back_capstone` | Window 1's finished last single-frame latent is tacked onto the back of every later window. |
+| `capstone_step` | Steps before the capstone comes in. Keep it below `switch_step` (4 with 6 = on for steps 5-6), or it never comes in. |
+| `fuse_method` | How the blended steps average the windows (pyramid). |
+| `freenoise` | Reuses window 1's noise for every window: more consistent, but motion can repeat. Off gives more variety. |
+| `split_conds_to_windows` | Give each window its own prompt (see below). |
+| `sound_first` | Renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
+| `detail_latent` | Optional: use this latent's first frame as the keystone instead of window 1's. |
+| `finished_handoff` | On: every window renders all the way to the last step, and the next window's overlap is locked to those finished frames. Every window goes back to its `switch_step` snapshot before the blended finish. Costs the last steps once more per window. |
+
+**One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.
+
+**Keystone tip:** the keystone is window 1's first frame. If the video starts somewhere it won't stay (a different scene, a title card), turn `keystone_swap` off or plug a better frame into `detail_latent`.
 
 ## Example workflows
 

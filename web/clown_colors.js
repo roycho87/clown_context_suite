@@ -13,6 +13,7 @@ const CLOWN_NODES = new Set([
     "H3ClownCarryover",
     "H3ClownKeyframe",
     "H3ClownLateLock",
+    "H3ClownHybridWindows",
 ]);
 const TITLE_PINK = "#c2407a";
 const BODY_PINK = "#6e2347";
