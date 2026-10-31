@@ -179,7 +179,6 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 | `fuse_method` | How the blended steps average the windows (pyramid). |
 | `freenoise` | Reuses window 1's noise for every window: more consistent, but motion can repeat. Off gives more variety. |
 | `split_conds_to_windows` | Give each window its own prompt (see below). |
-| `sound_first` | Renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
 | `detail_latent` | Optional: use this latent's first frame as the keystone instead of window 1's. |
 | `finished_handoff` | On: every window renders all the way to the last step, and the next window's overlap is locked to those finished frames. Every window goes back to its `switch_step` snapshot before the blended finish. Costs the last steps once more per window. |
 
