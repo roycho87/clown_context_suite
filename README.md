@@ -98,7 +98,7 @@ Rule that works:
 Two more are in this repo's `example_workflows` (moved over from my old packs and switched to this suite's Clown Context and Clown Anchoring, same settings):
 
 - [everyone_wants_a_piece_of_the_clown.json](example_workflows/everyone_wants_a_piece_of_the_clown.json): a Motion Context chain with Clown Context (39, drop_first 17) and Clown Anchoring (39, drop_last 17).
-- [withers_has_big_nattys.json](example_workflows/withers_has_big_nattys.json): the static vlog, with Clown Anchoring (39, drop_last 17).
+- [withers_has_big_nattys.json](example_workflows/withers_has_big_nattys.json): the static vlog (odd shots fresh, even shots continue). On even shots, Clown Context (39, drop_first 17) holds the end of the shot before at the start, and Clown Anchoring (39, drop_last 17) holds the start of the shot after at the end. Motion Context's Load / Save Latent nodes are still used for the clips.
 
 ### Joining the clips
 

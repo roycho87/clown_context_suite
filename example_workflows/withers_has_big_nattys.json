@@ -2,7 +2,7 @@
  "id": "524185a6-4fd2-441f-9973-814ab8543d59",
  "revision": 0,
  "last_node_id": 5453,
- "last_link_id": 40204,
+ "last_link_id": 40209,
  "nodes": [
   {
    "id": 21,
@@ -741,7 +741,6 @@
      "type": "VAE",
      "links": [
       2,
-      34,
       40133
      ]
     }
@@ -806,7 +805,6 @@
      "type": "VAE",
      "links": [
       16,
-      37,
       40070,
       40134
      ]
@@ -1387,7 +1385,7 @@
      "localized_name": "conditioning",
      "name": "conditioning",
      "type": "CONDITIONING",
-     "link": 40103
+     "link": 40205
     }
    ],
    "outputs": [
@@ -1637,8 +1635,8 @@
      "name": "latent",
      "type": "LATENT",
      "links": [
-      40197,
-      40200
+      40200,
+      40206
      ]
     }
    ],
@@ -1772,124 +1770,6 @@
    "bgcolor": "#653"
   },
   {
-   "id": 5000,
-   "type": "MiniMaxH3MotionContext",
-   "pos": [
-    3856.023756381526,
-    849.9756818181828
-   ],
-   "size": [
-    554.0923828125,
-    202
-   ],
-   "flags": {},
-   "order": 38,
-   "mode": 0,
-   "inputs": [
-    {
-     "localized_name": "conditioning",
-     "name": "conditioning",
-     "type": "CONDITIONING",
-     "link": 40140
-    },
-    {
-     "localized_name": "vae",
-     "name": "vae",
-     "type": "VAE",
-     "link": 34
-    },
-    {
-     "localized_name": "latent",
-     "name": "latent",
-     "type": "LATENT",
-     "link": 40143
-    },
-    {
-     "localized_name": "context_frames",
-     "name": "context_frames",
-     "shape": 7,
-     "type": "IMAGE",
-     "link": null
-    },
-    {
-     "localized_name": "context_latent",
-     "name": "context_latent",
-     "shape": 7,
-     "type": "LATENT",
-     "link": 36
-    },
-    {
-     "localized_name": "audio_vae",
-     "name": "audio_vae",
-     "shape": 7,
-     "type": "VAE",
-     "link": 37
-    },
-    {
-     "localized_name": "context_audio",
-     "name": "context_audio",
-     "shape": 7,
-     "type": "AUDIO",
-     "link": null
-    },
-    {
-     "localized_name": "context_length",
-     "name": "context_length",
-     "type": "COMBO",
-     "widget": {
-      "name": "context_length"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "audio_context_length",
-     "name": "audio_context_length",
-     "type": "INT",
-     "widget": {
-      "name": "audio_context_length"
-     },
-     "link": null
-    }
-   ],
-   "outputs": [
-    {
-     "localized_name": "conditioning",
-     "name": "conditioning",
-     "type": "CONDITIONING",
-     "links": [
-      40196
-     ]
-    },
-    {
-     "localized_name": "trim_frames",
-     "name": "trim_frames",
-     "type": "INT",
-     "links": []
-    }
-   ],
-   "title": "Motion Context: pins END of shot - 1 to the START (context_length 5 / 22 / 39)",
-   "properties": {
-    "cnr_id": "comfyui-h3-motion-context",
-    "ver": "5335715abe54c1a9bfbe3494da29aae3e8635ce3",
-    "Node name for S&R": "MiniMaxH3MotionContext",
-    "ue_properties": {
-     "widget_ue_connectable": {},
-     "version": "7.8",
-     "input_ue_unconnectable": {}
-    }
-   },
-   "widgets_values": [
-    "39",
-    39
-   ],
-   "widgets_values_named": {
-    "context_length": "39",
-    "audio_context_length": 39
-   },
-   "color": "#1f1f48",
-   "bgcolor": "rgba(24,24,27,.9)"
-  },
-  {
    "id": 5002,
    "type": "MiniMaxH3MotionContextSaveLatent",
    "pos": [
@@ -2001,7 +1881,7 @@
      "name": "LATENT",
      "type": "LATENT",
      "links": [
-      36
+      40207
      ]
     }
    ],
@@ -2288,7 +2168,8 @@
      "links": [
       40109,
       40110,
-      40148
+      40148,
+      40208
      ]
     },
     {
@@ -2382,7 +2263,6 @@
      "name": "BOOL",
      "type": "BOOLEAN",
      "links": [
-      40112,
       40202
      ]
     }
@@ -2406,75 +2286,6 @@
    },
    "color": "#323",
    "bgcolor": "#535"
-  },
-  {
-   "id": 5412,
-   "type": "LazySwitchKJ",
-   "pos": [
-    4558.830912745155,
-    444.08320000000174
-   ],
-   "size": [
-    300,
-    78
-   ],
-   "flags": {},
-   "order": 40,
-   "mode": 0,
-   "inputs": [
-    {
-     "label": "fresh (odd)",
-     "localized_name": "on_false",
-     "name": "on_false",
-     "type": "*",
-     "link": 40141
-    },
-    {
-     "label": "motion context (even)",
-     "localized_name": "on_true",
-     "name": "on_true",
-     "type": "*",
-     "link": 40196
-    },
-    {
-     "localized_name": "switch",
-     "name": "switch",
-     "type": "BOOLEAN",
-     "widget": {
-      "name": "switch"
-     },
-     "link": 40112
-    }
-   ],
-   "outputs": [
-    {
-     "localized_name": "*",
-     "name": "*",
-     "type": "*",
-     "links": [
-      40103
-     ]
-    }
-   ],
-   "title": "Conditioning: fresh or continuation",
-   "properties": {
-    "cnr_id": "comfyui-kjnodes",
-    "ver": "1.5.0",
-    "Node name for S&R": "LazySwitchKJ",
-    "ue_properties": {
-     "widget_ue_connectable": {
-      "switch": true
-     },
-     "version": "7.8",
-     "input_ue_unconnectable": {}
-    }
-   },
-   "widgets_values": [
-    false
-   ],
-   "widgets_values_named": {
-    "switch": false
-   }
   },
   {
    "id": 5206,
@@ -3499,8 +3310,7 @@
      "name": "positive",
      "type": "CONDITIONING",
      "links": [
-      40140,
-      40141
+      40205
      ]
     },
     {
@@ -3508,8 +3318,7 @@
      "name": "LATENT",
      "type": "LATENT",
      "links": [
-      40142,
-      40143
+      40142
      ]
     }
    ],
@@ -3802,7 +3611,7 @@
      "localized_name": "latent",
      "name": "latent",
      "type": "LATENT",
-     "link": 40197
+     "link": 40209
     },
     {
      "localized_name": "tail_frames",
@@ -3986,6 +3795,129 @@
    "widgets_values_named": {
     "switch": false
    }
+  },
+  {
+   "id": 5453,
+   "type": "H3ClownContextExperimental",
+   "pos": [
+    3856.023756381526,
+    849.9756818181828
+   ],
+   "size": [
+    340,
+    290
+   ],
+   "flags": {},
+   "order": 38,
+   "mode": 0,
+   "title": "Clown Context: holds the end of shot - 1 at the start (39 frames, drop_first 17)",
+   "inputs": [
+    {
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "LATENT",
+     "link": 40206
+    },
+    {
+     "localized_name": "head_frames",
+     "name": "head_frames",
+     "type": "INT",
+     "widget": {
+      "name": "head_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "drop_last",
+     "name": "drop_last",
+     "type": "INT",
+     "widget": {
+      "name": "drop_last"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "drop_first",
+     "name": "drop_first",
+     "type": "INT",
+     "widget": {
+      "name": "drop_first"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "hold_audio",
+     "name": "hold_audio",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "hold_audio"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "first_shot",
+     "name": "first_shot",
+     "type": "INT",
+     "widget": {
+      "name": "first_shot"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "audio_frames",
+     "name": "audio_frames",
+     "type": "INT",
+     "widget": {
+      "name": "audio_frames"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "audio_feather_ticks",
+     "name": "audio_feather_ticks",
+     "type": "INT",
+     "widget": {
+      "name": "audio_feather_ticks"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "shot_number",
+     "name": "shot_number",
+     "type": "INT",
+     "link": 40208,
+     "shape": 7
+    },
+    {
+     "localized_name": "previous_shot",
+     "name": "previous_shot",
+     "type": "LATENT",
+     "link": 40207,
+     "shape": 7
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "av_latent",
+     "name": "av_latent",
+     "type": "LATENT",
+     "links": [
+      40209
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "H3ClownContextExperimental"
+   },
+   "widgets_values": [
+    39,
+    0,
+    17,
+    true,
+    1,
+    0,
+    0
+   ]
   }
  ],
  "links": [
@@ -4102,30 +4034,6 @@
    "MODEL"
   ],
   [
-   34,
-   399,
-   0,
-   5000,
-   1,
-   "VAE"
-  ],
-  [
-   36,
-   5003,
-   0,
-   5000,
-   4,
-   "LATENT"
-  ],
-  [
-   37,
-   400,
-   0,
-   5000,
-   5,
-   "VAE"
-  ],
-  [
    40070,
    400,
    0,
@@ -4182,28 +4090,12 @@
    "LATENT"
   ],
   [
-   40103,
-   5412,
-   0,
-   468,
-   1,
-   "*"
-  ],
-  [
    40109,
    5410,
    1,
    5005,
    0,
    "INT"
-  ],
-  [
-   40112,
-   5411,
-   2,
-   5412,
-   2,
-   "BOOLEAN"
   ],
   [
    40117,
@@ -4270,35 +4162,11 @@
    "AUDIO"
   ],
   [
-   40140,
-   5428,
-   0,
-   5000,
-   0,
-   "CONDITIONING"
-  ],
-  [
-   40141,
-   5428,
-   0,
-   5412,
-   0,
-   "CONDITIONING"
-  ],
-  [
    40142,
    5428,
    1,
    1029,
    0,
-   "LATENT"
-  ],
-  [
-   40143,
-   5428,
-   1,
-   5000,
-   2,
    "LATENT"
   ],
   [
@@ -4332,22 +4200,6 @@
    5206,
    0,
    "STRING"
-  ],
-  [
-   40196,
-   5000,
-   0,
-   5412,
-   1,
-   "CONDITIONING"
-  ],
-  [
-   40197,
-   1000,
-   0,
-   5450,
-   0,
-   "LATENT"
   ],
   [
    40198,
@@ -4564,6 +4416,46 @@
    5428,
    16,
    "INT"
+  ],
+  [
+   40205,
+   5428,
+   0,
+   468,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   40206,
+   1000,
+   0,
+   5453,
+   0,
+   "LATENT"
+  ],
+  [
+   40207,
+   5003,
+   0,
+   5453,
+   9,
+   "LATENT"
+  ],
+  [
+   40208,
+   5410,
+   1,
+   5453,
+   8,
+   "INT"
+  ],
+  [
+   40209,
+   5453,
+   0,
+   5450,
+   0,
+   "LATENT"
   ]
  ],
  "groups": [
@@ -4629,7 +4521,7 @@
   },
   {
    "id": 6,
-   "title": "6  Shot order (odds fresh, evens continue) + Motion Context",
+   "title": "6  Shot order (odds fresh, evens continue) + Clown Context",
    "bounding": [
     3836.460252745162,
     93.22102,
