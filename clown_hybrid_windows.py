@@ -189,7 +189,7 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
     handoff = bool(getattr(h, "finished_handoff", False)) and k < steps
     need_key = (h.detail_swap and detail is None) or h.back_capstone
     if handoff:
-        extra = len(windows) * (steps - k)
+        extra = (len(windows) - 1) * (steps - k)       # the last window has no next window to hand off to
     else:
         extra = (steps - k) if (k < steps and need_key) else 0
     total_all = len(windows) * k + extra + (steps - k)
@@ -265,7 +265,7 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
                          + (f", {n_pin} overlap latents pinned to the windows before"
                             + (" (finished frames)" if handoff else "") if n_pin else "") + note)
             out, x0 = one_window(sigmas[0:k + 1], wi, st, slot, key_src)
-            if handoff:
+            if handoff and wi < len(windows) - 1:
                 # run this window on to the end from its step-k snapshot, same pins / keystone / capstone; the
                 # finished frames are what the next window's overlap gets pinned to
                 logging.info(f"[{WHO}] hybrid: window {wi + 1} finished on steps {k + 1}-{steps} for the handoff, "
