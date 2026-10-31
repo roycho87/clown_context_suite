@@ -613,8 +613,8 @@
     }
    },
    "widgets_values": [
-    "minimaxloras\\MiniMax3_Boob Physics_v1.safetensors",
-    1
+    "minimaxloras\\H3_Motion_BoosterV2.safetensors",
+    1.0
    ],
    "widgets_values_named": {
     "lora_name": "minimaxloras\\MiniMax3_Boob Physics_v1.safetensors",
