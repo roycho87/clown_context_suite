@@ -174,12 +174,12 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 | `switch_step` | Steps each window renders on its own before the blended finish. 6 of 8 = steps 1-6 window by window, 7-8 blended. |
 | `keystone_swap` | Window 1's finished first frame is locked into the first slot of every later window. |
 | `back_capstone` | Window 1's finished last single-frame latent is tacked onto the back of every later window. |
+| `finished_handoff` | On: every window renders all the way to the last step, and the next window's overlap is locked to those finished frames. Every window goes back to its `switch_step` snapshot before the blended finish. Costs the last steps once more per window. |
 | `capstone_step` | Steps before the capstone comes in. Keep it below `switch_step` (4 with 6 = on for steps 5-6), or it never comes in. |
 | `fuse_method` | How the blended steps average the windows (pyramid). |
 | `freenoise` | Reuses window 1's noise for every window: more consistent, but motion can repeat. Off gives more variety. |
 | `split_conds_to_windows` | Give each window its own prompt (see below). |
 | `detail_latent` | Optional: use this latent's first frame as the keystone instead of window 1's. |
-| `finished_handoff` | On: every window renders all the way to the last step, and the next window's overlap is locked to those finished frames. Every window goes back to its `switch_step` snapshot before the blended finish. Costs the last steps once more per window. |
 | `sound_first` | Off by default. On: renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
 
 **One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.

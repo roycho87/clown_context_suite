@@ -1984,6 +1984,16 @@
      "link": null
     },
     {
+     "localized_name": "finished_handoff",
+     "name": "finished_handoff",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "finished_handoff"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
      "localized_name": "capstone_step",
      "name": "capstone_step",
      "type": "INT",
@@ -2027,16 +2037,6 @@
      "shape": 7
     },
     {
-     "localized_name": "finished_handoff",
-     "name": "finished_handoff",
-     "type": "BOOLEAN",
-     "widget": {
-      "name": "finished_handoff"
-     },
-     "link": null,
-     "shape": 7
-    },
-    {
      "localized_name": "sound_first",
      "name": "sound_first",
      "type": "BOOLEAN",
@@ -2066,10 +2066,10 @@
     6,
     true,
     true,
+    true,
     4,
     "pyramid",
     false,
-    true,
     true,
     false
    ]

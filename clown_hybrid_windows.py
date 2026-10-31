@@ -434,6 +434,13 @@ class H3ClownHybridWindows:
                                               "tooltip": "Window 1's finished last single-frame latent is tacked onto the "
                                                          "back of every later window (locked) from capstone_step, and cut "
                                                          "off again."}),
+                "finished_handoff": ("BOOLEAN", {"default": False,
+                                                 "tooltip": "On: every window is run all the way to the last step, and "
+                                                            "the next window's overlap is locked to those finished frames "
+                                                            "(like context motion). Each window is saved at switch_step "
+                                                            "and goes back to that save before the blended finish. Costs "
+                                                            "the last steps once more per window. Off: the overlap is "
+                                                            "locked to the window before's clean guess at switch_step."}),
                 "capstone_step": ("INT", {"default": 4, "min": 0, "max": 200,
                                           "tooltip": "Steps before the capstone is tacked on. 4 with switch_step 6 = "
                                                      "on for steps 5-6."}),
@@ -447,13 +454,6 @@ class H3ClownHybridWindows:
             "optional": {
                 "detail_latent": ("LATENT", {"tooltip": "Optional: use this latent's first latent as the keystone "
                                                         "instead of window 1's finished frame 0."}),
-                "finished_handoff": ("BOOLEAN", {"default": False,
-                                                 "tooltip": "On: every window is run all the way to the last step, and "
-                                                            "the next window's overlap is locked to those finished frames "
-                                                            "(like context motion). Each window is saved at switch_step "
-                                                            "and goes back to that save before the blended finish. Costs "
-                                                            "the last steps once more per window. Off: the overlap is "
-                                                            "locked to the window before's clean guess at switch_step."}),
                 "sound_first": ("BOOLEAN", {"default": False,
                                             "tooltip": "Render the sound first on its own (blended windows, picture at "
                                                        "64x64), then lock it in and render the picture."}),
