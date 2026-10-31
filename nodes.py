@@ -569,6 +569,18 @@ class H3ClownShotCounter:
         nums = [int(m.group(1)) for f in os.listdir(folder) for m in [pat.match(f)] if m]
         return max(nums) if nums else 0
 
+    @staticmethod
+    def _auto_mode_only(latent_prefix):
+        """True if the folder only has auto-mode saves (name_00001_.safetensors), which the count ignores."""
+        import re, folder_paths
+        out_dir = os.path.abspath(folder_paths.get_output_directory())
+        full = os.path.abspath(os.path.join(out_dir, str(latent_prefix).strip()))
+        folder, name = os.path.dirname(full), os.path.basename(full)
+        if not full.startswith(out_dir) or not os.path.isdir(folder):
+            return False
+        auto = re.compile(re.escape(name) + r"_\d{5}_\.safetensors$")
+        return any(auto.match(f) for f in os.listdir(folder))
+
     @classmethod
     def IS_CHANGED(cls, shot_number, shot_counter, use_classic_counter=True, latent_prefix=""):
         if use_classic_counter:
@@ -582,6 +594,10 @@ class H3ClownShotCounter:
             last = self._saved_shot(latent_prefix)
             shot = last + 1
             print(f"[Clown Shot Counter] count saved latents: last saved clip {last} -> shot {shot}")
+            if last == 0 and self._auto_mode_only(latent_prefix):
+                print("[Clown Shot Counter] only auto-mode saves found (name_00001_.safetensors): those numbers restart "
+                      "every run, so they aren't counted - starting at shot 1. Use manual numbering on Save Latent "
+                      "(or the classic counter) to count shots.")
         return {"ui": {"clown_shot": [shot], "clown_classic": [bool(use_classic_counter)]},
                 "result": (shot, max(0, shot - 1), shot > 1)}
 
