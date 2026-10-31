@@ -12,15 +12,20 @@ comfy/context_windows.py, GPL-3). What this node adds is the keystone and capsto
    window's first slot, and the capstone is tacked onto its back from capstone_step (and cut off again).
 4. The rest of the steps run as kijai's blended windows over the whole video.
 
+sound_first (off by default): the sound is rendered first on its own (blended windows on every step, picture at 64x64), then locked in,
+so the main render only makes the picture.
+
 The sampler itself is unchanged: it's re-run in short passes on the full latent, with everything outside the window
 being worked on frozen, so memory use stays at one window.
 """
+import copy
 import logging
 
 import torch
 
 import comfy.conds
 import comfy.context_windows as cw
+import comfy.nested_tensor
 import comfy.model_sampling
 import comfy.patcher_extension
 import comfy.utils
@@ -48,9 +53,11 @@ def _supported(base_model):
 class ClownContextHandler(cw.IndexListContextHandler):
     """kijai's handler, plus a mode that runs only one window (with its own keep mask) for the window-by-window passes."""
 
-    def __init__(self, detail_swap=True, detail_latent=None, **kwargs):
+    def __init__(self, detail_swap=True, detail_latent=None, sound_first=False, **kwargs):
         super().__init__(**kwargs)
         self.schedule = HYBRID
+        self.sound_first = bool(sound_first)
+        self.sound_pass = False              # True while the 64x64 sound render runs (plain kijai windows)
         self.back_capstone = False
         self.capstone_step = 4
         self.capstone = None                 # window 1's capstone while a later window runs, else None
@@ -142,7 +149,7 @@ def _clown_sampler_sample(executor, guider, sigmas, extra_args, callback, noise,
     windows = cw.create_windows_static_standard(total, h, mo)
     steps = len(sigmas) - 1
     h.only_window, h.mask_conds = None, None
-    if len(windows) < 2 or steps < 1:
+    if h.sound_pass or len(windows) < 2 or steps < 1:
         return executor(guider, sigmas, extra_args, callback, noise, latent_image, denoise_mask, disable_pbar)
     return _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image, denoise_mask, disable_pbar,
                    h, model, shapes, multi, dims, unpack, pack, windows)
@@ -346,6 +353,57 @@ def _make_capstone_wrapper(h, prev):
     return wrapper
 
 
+SOUND_SIZE = 4   # latent pixels: 64 / 16
+
+
+def _clown_outer_sample(executor, noise, latent_image, sampler, sigmas, denoise_mask=None, callback=None,
+                        disable_pbar=False, seed=None, latent_shapes=None):
+    guider = executor.class_obj
+    h = guider.model_options.get("context_handler", None)
+    if (not isinstance(h, ClownContextHandler) or not h.sound_first or h.sound_pass
+            or latent_shapes is None or len(latent_shapes) < 2):
+        return executor(noise, latent_image, sampler, sigmas, denoise_mask, callback, disable_pbar, seed,
+                        latent_shapes=latent_shapes)
+    nv, na = comfy.utils.unpack_latents(noise, latent_shapes)[:2]
+    lv, la = comfy.utils.unpack_latents(latent_image, latent_shapes)[:2]
+    if denoise_mask is not None:
+        mv, ma = comfy.utils.unpack_latents(denoise_mask, latent_shapes)[:2]
+    else:
+        mv, ma = torch.ones_like(lv), torch.ones_like(la)
+
+    # ---- sound render: picture at 64x64, every step kijai's way, held sound kept ----
+    s = SOUND_SIZE
+    small_shape = tuple(lv.shape[:3]) + (s, s)
+    small_noise = torch.zeros(small_shape, dtype=nv.dtype, device=nv.device)
+    hh, ww = min(s, nv.shape[3]), min(s, nv.shape[4])
+    small_noise[:, :, :, :hh, :ww] = nv[:, :, :, :hh, :ww]
+    small_lat = torch.zeros(small_shape, dtype=lv.dtype, device=lv.device)
+    small_mask = torch.ones(small_shape, dtype=mv.dtype, device=mv.device)
+    NT = comfy.nested_tensor.NestedTensor
+    steps = len(sigmas) - 1
+    pbar = comfy.utils.ProgressBar(steps)
+
+    def cb(step, x0, x, total):          # progress bar only, no preview picture
+        pbar.update_absolute(step + 1, total, None)
+
+    g2 = copy.copy(guider)
+    logging.info(f"[{WHO}] rendering the sound first (picture at 64x64)")
+    h.sound_pass = True
+    try:
+        out = g2.sample(NT([small_noise, na.clone()]), NT([small_lat, la.clone()]), sampler, sigmas,
+                        denoise_mask=NT([small_mask, ma.clone()]), callback=cb, disable_pbar=disable_pbar, seed=seed)
+    finally:
+        h.sound_pass = False
+    sound = out.unbind()[1]
+
+    # ---- main render: the finished sound locked in, only the picture is made ----
+    li2 = comfy.utils.pack_latents([lv, sound.to(device=la.device, dtype=la.dtype)])[0]
+    dev = denoise_mask.device if denoise_mask is not None else guider.model_patcher.load_device
+    m2 = comfy.utils.pack_latents([mv.to(dev).float(), torch.zeros_like(ma).to(dev).float()])[0]
+    logging.info(f"[{WHO}] sound done, locked in for the picture")
+    return executor(noise, li2, sampler, sigmas, m2, callback, disable_pbar, seed, latent_shapes=latent_shapes)
+
+
 class H3ClownHybridWindows:
     CATEGORY = CATEGORY
     RETURN_TYPES = ("MODEL",)
@@ -396,12 +454,15 @@ class H3ClownHybridWindows:
                                                             "and goes back to that save before the blended finish. Costs "
                                                             "the last steps once more per window. Off: the overlap is "
                                                             "locked to the window before's clean guess at switch_step."}),
+                "sound_first": ("BOOLEAN", {"default": False,
+                                            "tooltip": "Render the sound first on its own (blended windows, picture at "
+                                                       "64x64), then lock it in and render the picture."}),
             },
         }
 
     def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=True,
               back_capstone=True, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
-              split_conds_to_windows=False, detail_latent=None, finished_handoff=False, **_old):
+              split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False, **_old):
         if not _supported(model.model):
             raise RuntimeError(f"{WHO} needs a newer ComfyUI with MiniMax H3 context windows (PR #17425). Update ComfyUI.")
         length = _video_latent_t(context_length)
@@ -416,7 +477,7 @@ class H3ClownHybridWindows:
             if src.ndim == 5:
                 detail = src[:, :, 0:1].clone()
         handler = ClownContextHandler(
-            detail_swap=keystone_swap, detail_latent=detail,
+            detail_swap=keystone_swap, detail_latent=detail, sound_first=sound_first,
             context_schedule=cw.get_matching_context_schedule(cw.ContextSchedules.STATIC_STANDARD),
             fuse_method=cw.get_matching_fuse_method(fuse_method),
             context_length=length, context_overlap=overlap, context_stride=1, closed_loop=False, dim=2,
@@ -433,9 +494,12 @@ class H3ClownHybridWindows:
         cw.create_prepare_sampling_wrapper(m)
         m.add_wrapper_with_key(comfy.patcher_extension.WrappersMP.SAMPLER_SAMPLE, "ClownHybridWindows_sampler_sample",
                                _clown_sampler_sample)
+        m.add_wrapper_with_key(comfy.patcher_extension.WrappersMP.OUTER_SAMPLE, "ClownHybridWindows_outer_sample",
+                               _clown_outer_sample)
         print(f"[{WHO}] window {length} latents, overlap {overlap}: steps 1-{switch_step} window by window, then blended"
               + (", finished handoff" if finished_handoff else "") + (", keystone" if keystone_swap else "")
-              + (f", capstone from step {int(capstone_step) + 1}" if back_capstone else ""))
+              + (f", capstone from step {int(capstone_step) + 1}" if back_capstone else "")
+              + (", sound first" if sound_first else ""))
         return (m,)
 
 

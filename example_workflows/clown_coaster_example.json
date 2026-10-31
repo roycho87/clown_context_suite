@@ -2035,6 +2035,16 @@
      },
      "link": null,
      "shape": 7
+    },
+    {
+     "localized_name": "sound_first",
+     "name": "sound_first",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "sound_first"
+     },
+     "link": null,
+     "shape": 7
     }
    ],
    "outputs": [
@@ -2060,7 +2070,8 @@
     "pyramid",
     false,
     true,
-    true
+    true,
+    false
    ]
   },
   {
