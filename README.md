@@ -199,6 +199,16 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 
 Late Lock does the restore, so join the clips the normal way (see [Joining the clips](#joining-the-clips)).
 
+### Clown Coaster example
+
+`example_workflows/clown_coaster_example.json` is a 60-second **Clowntext Hybrid Windows** render in one go: a first-person space roller coaster where only the rider's gloved hands are seen. A rocket launch throws her onto the track, then a loop-de-loop, ghost space stingrays, down to Mars, she hits a HYPERDRIVE button, a ride over the Sun, and around a black hole.
+
+- 1433 frames (60 s) in 8 windows of 226 frames, overlap 39.
+- 8 prompt nodes, one per window, joined in order with **Conditioning Combine**, with `split_conds_to_windows` on.
+- Keystone, capstone (`capstone_step` 4) and `finished_handoff` on, `freenoise` off.
+
+Load your subject picture into Picture 1 and press ComfyUI's Run. The length and size are on PROMPT 1; if you change the length, the prompts won't line up one per window any more.
+
 ### Other packs the examples use
 
 - [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context) or [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) (save / load latent). Install one, not both: they use the same node names.
