@@ -1,7 +1,7 @@
 """Clown Keystone and Clown Late Lock.
 
-Clown Keystone uses latents from clip 1 in every shot. Clip 1's first latent is the only true single-frame latent in a
-chain: every later clip's latent 0 is filled with a latent copied from the previous clip's tail, which held 4 frames.
+Clown Keystone uses latents from clip 1 in every shot. Every later clip's latent 0 in a chain is filled with a latent
+from the previous clip's tail, which was made mid-clip and already carries the drift; clip 1's latent 0 is the clean one.
 - keystone = clip 1's first latent (frame 0, a single frame on its own). It's locked into this shot's latent 0.
 - capstone = clip 1's last single-frame latent (the first latent of its last 17-frame block, e.g. latent 55 of a
   57-latent clip = frame 187).
@@ -133,7 +133,7 @@ class H3ClownKeyframe:
     RETURN_TYPES = ("LATENT", "MODEL")
     RETURN_NAMES = ("av_latent", "model")
     FUNCTION = "graft"
-    DESCRIPTION = ("Copies clip 1's first latent (frame 0, the only true single-frame latent in a chain) into the start of "
+    DESCRIPTION = ("Copies clip 1's first latent (frame 0, the clean start of the chain, before any drift) into the start of "
                    "this shot and locks it, so every shot starts from a clean, detailed frame. Put it after Clown Context, right "
                    "before the sampler. Feed clip 1 from a Load Latent fixed at clip 1 (outside the Chain group). With Clown "
                    "Context in front and the model plugged through, the real latent 0 is put back after sampling; otherwise trim "
