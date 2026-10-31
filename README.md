@@ -139,7 +139,7 @@ Restore and the back both need the model, so plug the model through Keystone (mo
 
 | Input | Meaning |
 |---|---|
-| `clip 1 (keystone / capstone)` | A Load Latent fixed on the source clip (clip 1 by default, the same clip as `source_clip`). Keep it **outside** the Chain group so the Chain buttons don't change its number. |
+| `source clip (keystone / capstone)` | A Load Latent fixed on the source clip (clip 1 by default, the same clip as `source_clip`). Keep it **outside** the Chain group so the Chain buttons don't change its number. |
 | `model` | Optional. Plug it through here (model out to the guider) if you don't use Late Lock: then the back is tacked on from step 1 and latent 0 is restored. |
 | `shot_number` | From Clown Shot Counter. On the source clip's shot and earlier, it isn't loaded (it doesn't exist yet). |
 

@@ -1,8 +1,8 @@
 """Clown Keystone and Clown Late Lock.
 
-Clown Keystone uses latents from a clean clip (normally clip 1) in every shot:
-- keystone = clip 1's first latent (frame 0, a single frame on its own). It's locked into this shot's latent 0.
-- capstone = clip 1's last single-frame latent (the first latent of its last 17-frame block, e.g. latent 55 of a
+Clown Keystone uses latents from a clean source clip (clip 1 by default, any clip you pick) in every shot:
+- keystone = the source clip's first latent (frame 0, a single frame on its own). It's locked into this shot's latent 0.
+- capstone = the source clip's last single-frame latent (the first latent of its last 17-frame block, e.g. latent 55 of a
   57-latent clip = frame 187).
 Placement options: keystone front (default), keystone front + back, capstone front + back, keystone front + capstone back.
 
@@ -126,16 +126,17 @@ PLACEMENTS = ["keystone front", "keystone front + back", "capstone front + back"
 
 
 class H3ClownKeyframe:
-    """Clown Keystone: clip 1's keystone / capstone grafted onto every shot."""
+    """Clown Keystone: the source clip's keystone / capstone grafted onto every shot."""
 
     CATEGORY = CATEGORY
     RETURN_TYPES = ("LATENT", "MODEL")
     RETURN_NAMES = ("av_latent", "model")
     FUNCTION = "graft"
-    DESCRIPTION = ("Copies the first latent (frame 0, a single frame) of clip 1 into the start of this shot and "
+    DESCRIPTION = ("Copies the first latent (frame 0, a single frame) of a source clip (clip 1 by default) into the start of this shot and "
                    "locks it, so every shot starts from the original clean frame. Put it after Clown Context, right before "
-                   "the sampler. Feed clip 1 from a Load Latent fixed at clip 1 (outside the Chain group). Trim the first "
-                   "frame of each shot when you stitch. With shot_number plugged in, clip 1 isn't loaded on the first shot.")
+                   "the sampler. Feed the source clip from a Load Latent fixed on that clip (outside the Chain group). With Clown Context "
+                   "in front and the model plugged through, the real latent 0 is put back after sampling; otherwise trim the first "
+                   "frame of each shot when you stitch. With shot_number plugged in, the source clip isn't loaded until after its shot.")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -148,16 +149,16 @@ class H3ClownKeyframe:
                                                        "the sampler may adjust it. 1 = ignored (it's redrawn from noise)."}),
                 "first_shot": ("INT", {"default": 1, "min": -9999, "max": 99999,
                                        "tooltip": "source_clip: the clip the keystone / capstone come from (set the Load Latent "
-                                                  "feeding clip 1 to the same clip). On that shot and earlier nothing is grafted and "
+                                                  "feeding Keystone to the same clip). On that shot and earlier nothing is grafted and "
                                                   "the latent passes through. Only used when shot_number is plugged in."}),
                 "placement": (PLACEMENTS, {"default": PLACEMENTS[0],
-                                           "tooltip": "keystone = clip 1's first latent (frame 0). capstone = its last "
+                                           "tooltip": "keystone = the source clip's first latent (frame 0). capstone = its last "
                                                       "single-frame latent (first latent of its last 17-frame block). front = this "
                                                       "shot's latent 0, back = this shot's last single-frame slot."}),
             },
             "optional": {
                 "keyframe": ("LATENT", {"lazy": True,
-                                        "tooltip": "Clip 1 (a Load Latent fixed at clip 1): where the keystone (its first latent) and "
+                                        "tooltip": "The source clip (a Load Latent fixed on the clip set in source_clip, clip 1 by default): where the keystone (its first latent) and "
                                                    "capstone (its last single-frame latent) come from."}),
                 "shot_number": ("INT", {"forceInput": True, "tooltip": "From Clown Shot Counter. Skips the first shot."}),
                 "model": ("MODEL", {"tooltip": "Optional: plug the model through here (model out -> guider / Late Lock) so "
@@ -179,10 +180,10 @@ class H3ClownKeyframe:
             print(f"[{who}] off - latent passed through")
             return (latent, model)
         if shot_number is not None and int(shot_number) <= int(first_shot):
-            print(f"[{who}] shot {shot_number} is the first shot - clip 1 not loaded, latent passed through")
+            print(f"[{who}] shot {shot_number} is the source clip or earlier - source clip not loaded, latent passed through")
             return (latent, model)
         if not _has_samples(keyframe):
-            print(f"[{who}] no clip 1 latent - latent passed through")
+            print(f"[{who}] no source clip latent - latent passed through")
             return (latent, model)
         samples = latent["samples"]
         packed = NestedTensor is not None and isinstance(samples, NestedTensor)
@@ -197,14 +198,14 @@ class H3ClownKeyframe:
         kparts = _split(ks)
         src = max(kparts, key=lambda p: p.ndim)
         if src.ndim != 5 or src.shape[1] != video.shape[1] or src.shape[3:] != video.shape[3:]:
-            raise ValueError(f"{who}: clip 1 latent {tuple(src.shape)} doesn't match this shot {tuple(video.shape)} "
+            raise ValueError(f"{who}: source clip latent {tuple(src.shape)} doesn't match this shot {tuple(video.shape)} "
                              "(same model and resolution needed).")
         old_masks = _carry_masks(latent, list(parts), packed, vi)
         old_vmask = old_masks[vi]
         original_0 = video[:, :, 0:1].clone()   # the chain's own latent 0 (Clown Context's held frame)
         held_0 = old_vmask.shape == video.shape and float(old_vmask[:, :, 0:1].max()) < 0.5
         video = video.clone()
-        key_src = 0                                          # keystone: clip 1's first latent
+        key_src = 0                                          # keystone: the source clip's first latent
         cap_src = 5 * ((int(src.shape[2]) - 1) // 5)         # capstone: its last single-frame latent
         back = 5 * ((int(video.shape[2]) - 1) // 5)          # this shot's last single-frame slot
         pick = {"keystone front": (key_src, None),
@@ -226,9 +227,9 @@ class H3ClownKeyframe:
             vmask[:, :, dst:dst + 1] = float(keyframe_mask)
         masks[vi] = vmask
         name = lambda i: "keystone" if i == key_src else "capstone"
-        note = ", ".join(f"{name(s_i)} (clip 1 latent {s_i}) -> latent {dst} = frame {_frames_before(dst)}" for dst, s_i in slots)
+        note = ", ".join(f"{name(s_i)} (source clip latent {s_i}) -> latent {dst} = frame {_frames_before(dst)}" for dst, s_i in slots)
         if back_lat is not None:
-            note += f", {name(back_src)} (clip 1 latent {back_src}) tacked onto the back"
+            note += f", {name(back_src)} (source clip latent {back_src}) tacked onto the back"
         out = _pack(latent, parts, masks, packed, who)
         out["clown_keyframe_slots"] = [int(dst) for dst, _ in slots]   # tells Clown Late Lock what was grafted
         if back_lat is not None:

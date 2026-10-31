@@ -7,7 +7,7 @@ app.registerExtension({
         if (nodeData.name !== "H3ClownKeyframe") return;
         const label = (node) => {
             const inp = node.inputs?.find((i) => i.name === "keyframe");
-            if (inp) inp.label = "clip 1 (keystone / capstone)";
+            if (inp) inp.label = "source clip (keystone / capstone)";
             const w = node.widgets?.find((x) => x.name === "keyframe_mask");
             if (w) w.label = "graft_mask";
             const fs = node.widgets?.find((x) => x.name === "first_shot");
