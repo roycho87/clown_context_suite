@@ -89,6 +89,14 @@ Both copy real latents into the shot at matching block positions and mask them s
 Rule that works:
 - The Anchoring frames must outnumber the Context frames.
 
+**Workflows that use Clown Anchoring** (all in [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-)):
+
+- [sane_person_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_person_example.json): Clown Chain + Prophecy + Anchoring.
+- [sane_clown_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_clown_example.json): the same, with Clown Carryover.
+- [insane_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/insane_example.json): the vlog, pre-split audio and one prompt file per shot.
+
+Two older workflows in my [workflows](https://github.com/roycho87/workflows) repo also use an earlier version of Clown Anchoring (`H3BlockTailAnchor`, from the old h3_clown_anchoring pack): [everyone_wants_a_piece_of_the_clown.json](https://github.com/roycho87/workflows/blob/main/workflows/clown_context_workflow/everyone_wants_a_piece_of_the_clown.json) and [withers_has_big_nattys.json](https://github.com/roycho87/workflows/blob/main/workflows/Seamless_vlog_workflow/withers_has_big_nattys.json). That pack is gone, so swap in this suite's Clown Anchoring (and Clown Context) when you open them.
+
 ### Joining the clips
 
 Each clip is saved whole (all of its frames, overlap included), so trim them when you join them. `drop_last` doesn't remove the overlap, it only changes what's in it. With Clown Context at 39, `drop_last` 17:
@@ -103,7 +111,7 @@ So the two clips still share 39 frames of time: 22 identical, and 17 that are tw
 
 Don't cut the first 39 frames off the next clip instead: that joins two different takes of the same moment and can show a small jump. The last clip is always kept whole. For other settings, the overlap is `head_frames` and the identical part is `head_frames` minus the drops.
 
-**[Seamless Video Combiner](https://github.com/roycho87/seamless_video_combiner)** does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for Clown chains: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
+**[Seamless Video Combiner](https://github.com/roycho87/workflows/blob/main/workflows/seamless_video_combiner/clussy_origin_story.json)** (in my workflows repo) does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for Clown chains: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
 
 ## Clown Keystone and Clown Late Lock
 
