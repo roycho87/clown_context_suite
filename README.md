@@ -89,13 +89,16 @@ Both copy real latents into the shot at matching block positions and mask them s
 Rule that works:
 - The Anchoring frames must outnumber the Context frames.
 
-**Workflows that use Clown Anchoring** (all in [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-)):
+**Workflows that use Clown Anchoring** (in [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-)):
 
 - [sane_person_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_person_example.json): Clown Chain + Prophecy + Anchoring.
 - [sane_clown_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_clown_example.json): the same, with Clown Carryover.
 - [insane_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/insane_example.json): the vlog, pre-split audio and one prompt file per shot.
 
-Two older workflows in my [workflows](https://github.com/roycho87/workflows) repo also use an earlier version of Clown Anchoring (`H3BlockTailAnchor`, from the old h3_clown_anchoring pack): [everyone_wants_a_piece_of_the_clown.json](https://github.com/roycho87/workflows/blob/main/workflows/clown_context_workflow/everyone_wants_a_piece_of_the_clown.json) and [withers_has_big_nattys.json](https://github.com/roycho87/workflows/blob/main/workflows/Seamless_vlog_workflow/withers_has_big_nattys.json). That pack is gone, so swap in this suite's Clown Anchoring (and Clown Context) when you open them.
+Two more are in this repo's `example_workflows` (moved over from my old packs and switched to this suite's Clown Context and Clown Anchoring, same settings):
+
+- [everyone_wants_a_piece_of_the_clown.json](example_workflows/everyone_wants_a_piece_of_the_clown.json): a Motion Context chain with Clown Context (39, drop_first 17) and Clown Anchoring (39, drop_last 17).
+- [withers_has_big_nattys.json](example_workflows/withers_has_big_nattys.json): the static vlog, with Clown Anchoring (39, drop_last 17).
 
 ### Joining the clips
 
