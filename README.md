@@ -219,6 +219,12 @@ Late Lock does the restore, so join the clips the normal way (see [Joining the c
 
 Load your subject picture into Picture 1 and press ComfyUI's Run. The length and size are on PROMPT 1; if you change the length, the prompts won't line up one per window any more.
 
+### Clowns for Picard example
+
+`example_workflows/clowns_for_picard.json` is the Clown Coaster example as I actually rendered it: widescreen 1328 × 736 (0.98 MP), 60 seconds (1433 frames) in 8 windows of 226 frames, with more detailed, faster-moving prompts. The 8 prompts are in big **WINDOW 1-8 PROMPT** text boxes in the green group at the bottom, in ride order, so you don't have to type into the small prompt nodes.
+
+Keystone, capstone (`capstone_step` 4), `finished_handoff` and `sound_first` on, `freenoise` off. Load your subject picture into Picture 1 and press ComfyUI's Run. It's a big render (a full minute at almost 1 MP); lower the size if you run out of memory.
+
 ### Other packs the examples use
 
 - [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context) or [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) (save / load latent). Install one, not both: they use the same node names.
