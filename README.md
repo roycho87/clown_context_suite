@@ -120,15 +120,13 @@ Don't cut the first 39 frames off the next clip instead: that joins two differen
 
 Every shot in a chain is made from the one before it, so small colour and sharpness changes build up. Clown Keystone puts a latent from clip 1 into every shot, so each one is pulled back to how clip 1 looked.
 
-H3 latents come in 17-frame blocks of 1 + 4 + 4 + 4 + 4 frames. The first latent of each block is a single frame on its own:
+- **keystone** = clip 1's first frame (frame 0).
+- **capstone** = a frame from the end of clip 1 (frame 187 of a 192-frame clip).
 
-- **keystone** = clip 1's first latent (frame 0).
-- **capstone** = clip 1's last single-frame latent (frame 187 of a 192-frame clip).
-
-**Why clip 1:** every H3 clip's latent 0 is a single frame, and in a chain each later clip's latent 0 is filled with a single-frame latent from the previous clip's tail. But that latent was made in the middle of the previous clip, so it already carries everything that drifted on the way there, and it gets copied forward again and again. Clip 1's latent 0 is the only one at the very start of the chain, before any drift, and the first frame is what MiniMax leans on most. That's why Keystone always pulls from clip 1.
+**Why clip 1:** in a chain, each later clip's frame 0 comes from the previous clip's tail. But that frame was made in the middle of the previous clip, so it already carries everything that drifted on the way there, and it gets copied forward again and again. Clip 1's frame 0 is the only one at the very start of the chain, before any drift, and the first frame is what MiniMax leans on most. That's why Keystone always pulls from clip 1.
 
 - **Front:** the keystone (or capstone) is locked into the shot's latent 0. When **Clown Context** comes before Keystone, the shot's latent 0 is a real frame held from the previous shot, and after sampling it's put back into the output, so the saved latent and the video keep the real frame. In a workflow without Clown Context (for example plain Motion Context), the shot has no real latent 0 of its own to put back, so each clip's first frame stays clip 1's frame: it still works as a detail anchor, just trim that one frame when you join.
-- **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output. It sits in a 4-frame latent slot.
+- **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output.
 
 Restore and the back both need the model, so plug the model through Keystone (model in, model out to the guider) or use Clown Late Lock.
 
