@@ -123,7 +123,9 @@ Every shot in a chain is made from the one before it, so small colour and sharpn
 - **keystone** = clip 1's first frame (frame 0).
 - **capstone** = a frame from the end of clip 1 (frame 187 of a 192-frame clip).
 
-**Why clip 1:** in a chain, each later clip's frame 0 comes from the previous clip's tail. But that frame was made in the middle of the previous clip, so it already carries everything that drifted on the way there, and it gets copied forward again and again. Clip 1's frame 0 is the only one at the very start of the chain, before any drift, and the first frame is what MiniMax leans on most. That's why Keystone always pulls from clip 1.
+**Why clip 1:** in a chain, each later clip's frame 0 comes from the previous clip's tail. But that frame was made in the middle of the previous clip, so it already carries everything that drifted on the way there, and it gets copied forward again and again. Clip 1's frame 0 is the only one at the very start of the chain, before any drift, and the first frame is what MiniMax leans on most. That's why Keystone pulls from clip 1 by default.
+
+**source_clip:** you can pick a different source clip at any point in the chain. If the scene changes, set `source_clip` to a newer clip (and the Load Latent feeding Keystone to the same clip), and that clip's keystone and capstone are used from then on. Shots up to and including the source clip pass through untouched.
 
 - **Front:** the keystone (or capstone) is locked into the shot's latent 0. When **Clown Context** comes before Keystone, the shot's latent 0 is a real frame held from the previous shot, and after sampling it's put back into the output, so the saved latent and the video keep the real frame. In a workflow without Clown Context (for example plain Motion Context), the shot has no real latent 0 of its own to put back, so each clip's first frame stays clip 1's frame: it still works as a detail anchor, just trim that one frame when you join.
 - **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output.
@@ -134,12 +136,13 @@ Restore and the back both need the model, so plug the model through Keystone (mo
 |---|---|
 | `enabled` | On / off. |
 | `placement` | `keystone front` (default), `keystone front + back`, `capstone front + back`, `keystone front + capstone back`. front = written into the shot's first latent, back = tacked on after the shot's end. |
+| `source_clip` | The clip the keystone and capstone come from (1 by default). Set the Load Latent feeding Keystone to the same clip. With `shot_number` plugged in, shots up to and including this clip pass through. |
 
 | Input | Meaning |
 |---|---|
-| `clip 1 (keystone / capstone)` | A Load Latent fixed on clip 1. Keep it **outside** the Chain group so the Chain buttons don't change its number. |
+| `source clip (keystone / capstone)` | A Load Latent fixed on the source clip (clip 1 by default). Keep it **outside** the Chain group so the Chain buttons don't change its number. |
 | `model` | Optional. Plug it through here (model out to the guider) if you don't use Late Lock: then the back is tacked on from step 1 and latent 0 is restored. |
-| `shot_number` | From Clown Shot Counter. On shot 1 nothing is grafted (clip 1 doesn't exist yet). |
+| `shot_number` | From Clown Shot Counter. On the source clip's shot and earlier nothing is grafted (the source clip doesn't exist yet). |
 
 **Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. `swap_step` (default 4) is when Keystone's latents come in:
 

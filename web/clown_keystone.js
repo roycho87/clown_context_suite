@@ -1,6 +1,8 @@
 // Clown Keystone: show the keystone / capstone terms on the node (the saved input names stay the same), and put
-// workflows saved before keyframe_mask and source_clip were removed back on the right widgets.
-//   old: enabled, keyframe_mask, first_shot (source_clip), placement      now: enabled, placement
+// workflows saved with an older widget layout back on the right widgets.
+//   oldest: enabled, keyframe_mask, first_shot (source clip), placement
+//   then:   enabled, placement
+//   now:    enabled, placement, source_clip
 import { app } from "../../scripts/app.js";
 
 app.registerExtension({
@@ -9,7 +11,7 @@ app.registerExtension({
         if (nodeData.name !== "H3ClownKeyframe") return;
         const label = (node) => {
             const inp = node.inputs?.find((i) => i.name === "keyframe");
-            if (inp) inp.label = "clip 1 (keystone / capstone)";
+            if (inp) inp.label = "source clip (keystone / capstone)";
         };
         const onCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
@@ -24,8 +26,10 @@ app.registerExtension({
             if (Array.isArray(v) && v.length >= 4 && typeof v[1] === "number") {
                 const en = this.widgets?.find((w) => w.name === "enabled");
                 const pl = this.widgets?.find((w) => w.name === "placement");
+                const sc = this.widgets?.find((w) => w.name === "source_clip");
                 if (en) en.value = v[0];
                 if (pl && typeof v[3] === "string") pl.value = v[3];
+                if (sc && typeof v[2] === "number") sc.value = Math.max(1, v[2]);
             }
             label(this);
             return r;
