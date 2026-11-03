@@ -14,9 +14,6 @@ The Geiru Context Suite stands on other people's work. I'm building off it, so a
 - **drozbay**: native H3 latent-mask support and the masked-extension method everything here relies on.
 - **kijai**: ComfyUI's MiniMax H3 support and context windows (used by Geiru Hybrid Windows).
 - **JalenBrunson**: [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows), which Geiru Hybrid Windows works like.
-- **obvpm**: the odd/even shot method behind Geiru Anchoring.
-- **BittiAI**: the woman-running-on-a-beach benchmark used for the final test.
-- **Blink**: for pointing out the Clown name clash.
 - Everyone on the Banodoco Discord and r/StableDiffusion who tested, argued and shared results.
 
 **Geiru Hybrid Windows** is built on **kijai**'s MiniMax H3 context windows in ComfyUI and works the way **JalenBrunson**'s [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows) does. I just added the keystone and capstone to it. See [Geiru Hybrid Windows](#geiru-hybrid-windows).
@@ -54,7 +51,7 @@ Set them up once, then flip one switch: on for long stretches of one continuous 
 
 **With Geiru Anchoring:** Anchoring holds frames at the end of the shot, which is where the capstone would go. So when Anchoring is holding something, Keystone and Late Lock skip the capstone automatically (the keystone at the front is still used). Nothing to set.
 
-**Results:** on a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a woman running along a beach (BittiAI's benchmark), it still looked like clip 1 at clip 20 while the plain chain had fallen apart (first look; the full 50-clip results are being written up). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
+**Results:** on a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a woman running along a beach, it still looked like clip 1 at clip 20 while the plain chain had fallen apart (first look; the full 50-clip results are being written up). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
 
 ## Clown Prophecy has moved
 
