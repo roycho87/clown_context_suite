@@ -125,6 +125,24 @@ def _protection_off(latent):
     return isinstance(latent, dict) and latent.get("geiru_protection", True) is False
 
 
+def _load_source(folder, clip, who):
+    """Load clip `clip` from a chain's latent folder with the installed Load Latent node (H3 Motion Context or
+    Motion Context MultiRef, which both save clip N as <prefix>_0000N), so source_clip picks the latent by itself."""
+    try:
+        import nodes as comfy_nodes
+        cls = comfy_nodes.NODE_CLASS_MAPPINGS.get("MiniMaxH3MotionContextLoadLatent")
+    except Exception:
+        cls = None
+    if cls is None:
+        raise RuntimeError(f"{who}: latent_folder needs H3 Motion Context or Motion Context MultiRef installed (their "
+                           "Load Latent reads the saved clips). Or leave latent_folder empty and plug a Load Latent "
+                           "into the source clip input.")
+    inst = cls()
+    out = getattr(inst, getattr(cls, "FUNCTION", "load"))(latent_path=folder, clip_index=int(clip))[0]
+    print(f"[{who}] source clip {clip} loaded from {folder}")
+    return out
+
+
 def _frames_before(n_latents):
     return _frames_of(n_latents)
 
@@ -169,20 +187,28 @@ class H3ClownKeyframe:
                                                    "single-frame latent) come from."}),
                 "shot_number": ("INT", {"forceInput": True, "tooltip": "From Geiru Shot Counter. Skips the source clip's "
                                                                        "shot and earlier."}),
+                "latent_folder": ("STRING", {"default": "",
+                                             "tooltip": "The folder your chain saves its latents in (the Save Latent "
+                                                        "filename folder, e.g. h3_ref2va). When set, Keystone loads "
+                                                        "source_clip from it itself, so source_clip is the only number "
+                                                        "to change, and the source clip input isn't needed. Empty = use "
+                                                        "the source clip input."}),
                 "model": ("MODEL", {"tooltip": "Optional: plug the model through here (model out -> guider / Late Lock) so "
                                                "the chain's real latent 0 is put back into the output after sampling."}),
             },
         }
 
-    def check_lazy_status(self, enabled=True, shot_number=None, keyframe=None, source_clip=1, **kw):
+    def check_lazy_status(self, enabled=True, shot_number=None, keyframe=None, source_clip=1, latent_folder="", **kw):
         if not bool(enabled):
             return []
         if shot_number is not None and int(shot_number) <= int(source_clip):
             return []
+        if str(latent_folder or "").strip():
+            return []                                   # loaded from the folder, the input isn't needed
         return ["keyframe"] if keyframe is None else []
 
     def graft(self, latent, enabled=True, keyframe=None, shot_number=None,
-              placement="keystone front", model=None, source_clip=1, **_old):
+              placement="keystone front", model=None, source_clip=1, latent_folder="", **_old):
         who = "Geiru Keystone"
         if not bool(enabled):
             print(f"[{who}] off - latent passed through")
@@ -195,6 +221,8 @@ class H3ClownKeyframe:
             print(f"[{who}] shot {shot_number} is the source clip (clip {src_n}) or earlier - nothing to graft yet, "
                   "latent passed through")
             return (latent, model)
+        if str(latent_folder or "").strip():
+            keyframe = _load_source(str(latent_folder).strip(), src_n, who)
         if not _has_samples(keyframe):
             print(f"[{who}] no source clip latent - latent passed through")
             return (latent, model)

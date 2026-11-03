@@ -160,7 +160,7 @@ Every shot in a chain is made from the one before it, so small colour and sharpn
 
 **Why clip 1:** in a chain, each later clip's frame 0 comes from the previous clip's tail. But that frame was made in the middle of the previous clip, so it already carries everything that drifted on the way there, and it gets copied forward again and again. Clip 1's frame 0 is the only one at the very start of the chain, before any drift, and the first frame is what MiniMax leans on most. That's why Keystone pulls from clip 1 by default.
 
-**source_clip:** you can pick a different source clip at any point in the chain. If the scene changes, set `source_clip` to a newer clip (and the Load Latent feeding Keystone to the same clip), and that clip's keystone and capstone are used from then on. Shots up to and including the source clip pass through untouched.
+**source_clip:** you can pick a different source clip at any point in the chain. If the scene changes, set `source_clip` to a newer clip, and that clip's keystone and capstone are used from then on. The easy way: set `latent_folder` to your chain's latent folder and Keystone loads `source_clip` itself, so it's the only number to change. (Without `latent_folder`, also set the Load Latent feeding Keystone to the same clip: that Load node is what actually picks the latent.) Shots up to and including the source clip pass through untouched.
 
 - **Front:** the keystone (or capstone) is locked into the shot's latent 0. When **Geiru Context** comes before Keystone, the shot's latent 0 is a real frame held from the previous shot, and after sampling it's put back into the output, so the saved latent and the video keep the real frame. In a workflow without Geiru Context (for example plain Motion Context), the shot has no real latent 0 of its own to put back, so each clip's first frame stays clip 1's frame: it still works as a detail anchor, just trim that one frame when you join.
 - **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output.
@@ -171,7 +171,8 @@ Restore and the back both need the model, so plug the model through Keystone (mo
 |---|---|
 | `enabled` | On / off. |
 | `placement` | `keystone front` (default), `keystone front + back`, `capstone front + back`, `keystone front + capstone back`. front = written into the shot's first latent, back = tacked on after the shot's end. |
-| `source_clip` | The clip the keystone and capstone come from (1 by default). Set the Load Latent feeding Keystone to the same clip. With `shot_number` plugged in, shots up to and including this clip pass through. |
+| `source_clip` | The clip the keystone and capstone come from (1 by default). With `latent_folder` set, this is the only number you change: Keystone loads that clip itself. With `shot_number` plugged in, shots up to and including this clip pass through. |
+| `latent_folder` | The folder your chain saves its latents in (your Save Latent's folder, e.g. `h3_ref2va`). When set, Keystone loads `source_clip` from it itself and the source clip input isn't needed. Leave it empty to use the source clip input as before (then set that Load Latent to the same clip as `source_clip`). Needs H3 Motion Context or Motion Context MultiRef installed. |
 
 | Input | Meaning |
 |---|---|
