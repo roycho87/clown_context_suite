@@ -7,7 +7,7 @@ Chained continuation for MiniMax H3 in ComfyUI.
     Geiru Anchoring         a source's HEAD      -> this shot's TAIL (video and audio)
     Geiru Shot Counter      shot number: classic counter, or counted from saved latents
 
-(Clown Prophecy and Clown Carryover moved to roycho87/Clown-Prophecy-Experimental-.)
+(Geiru Prophecy and Clown Carryover moved to roycho87/Clown-Prophecy-Experimental-.)
 
 The anchor nodes copy real latents into the starting latent at MATCHING BLOCK
 POSITIONS (FRAME_PER_TOKEN = (1, 4, 4, 4, 4) from frame 0; 17-frame blocks) and set
@@ -541,11 +541,11 @@ class H3BlockTailAnchorExperimental:
 # --------------------------------------------------------------------------- color match to a chosen clip
 
 
-# --------------------------------------------------------------------------- Clown Prophecy Sampler
+# --------------------------------------------------------------------------- Geiru Prophecy Sampler
 
 
 class H3ClownShotCounter:
-    """Shot counter for the Clown Prophecy setup."""
+    """Shot counter for the Geiru Prophecy setup."""
 
     CATEGORY = CATEGORY
     RETURN_TYPES = ("INT", "INT", "BOOLEAN")

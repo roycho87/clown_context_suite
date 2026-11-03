@@ -53,16 +53,16 @@ Set them up once, then flip one switch: on for long stretches of one continuous 
 
 **Results:** on a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a woman running along a beach, it still looked like clip 1 at clip 20 while the plain chain had fallen apart (first look; the full 50-clip results are being written up). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
 
-## Clown Prophecy has moved
+## Geiru Prophecy has moved
 
-Clown Prophecy (with Clown Carryover and the Prophecy example workflows) now lives in its own repo: [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-). Clown Prophecy was moved there because it is too inconsistent and experimental to be considered a finished node. Keystone and Capstone are a much more promising direction.
+Geiru Prophecy (with Clown Carryover and the Prophecy example workflows) now lives in its own repo: [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-). Geiru Prophecy was moved there because it is too inconsistent and experimental to be considered a finished node. Keystone and Capstone are a much more promising direction.
 
 ## Nodes
 
 | Node | What it does |
 |---|---|
 | **Geiru Context** | Holds the previous shot's last frames (and audio) at the start of this shot. Its `degradation_protection` switch turns Keystone, Late Lock and Context Noise on or off together. |
-| **Geiru Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug any source into `next_shot`, e.g. an ending from Clown Prophecy (in its own repo now). |
+| **Geiru Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug any source into `next_shot`, e.g. an ending from Geiru Prophecy (in its own repo now). |
 | **Geiru Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
 | **Geiru Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
 | **Geiru Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. With Geiru Context in front of it, puts the real frame back afterwards. |
@@ -76,7 +76,7 @@ Everything shows up under the **Geiru Context Suite** category.
 
 | Setting | Meaning |
 |---|---|
-| `use_classic_counter` on | The `shot_number` box is the shot. `increment` / `decrement` change it each time you hit run, `increment after accept` only after an accepted run of Clown Prophecy (now in its own repo; one shot at a time only), `fixed` never. `follow motion context` copies the `clip_index` from Motion Context's Save Latent node each run (see below). |
+| `use_classic_counter` on | The `shot_number` box is the shot. `increment` / `decrement` change it each time you hit run, `increment after accept` only after an accepted run of Geiru Prophecy (now in its own repo; one shot at a time only), `fixed` never. `follow motion context` copies the `clip_index` from Motion Context's Save Latent node each run (see below). |
 | `use_classic_counter` off | The shot is worked out when the run starts: highest saved latent in `latent_prefix` + 1. Each new chain needs its own empty folder. |
 | `latent_prefix` | The Save Latent `filename_prefix` (count mode). |
 

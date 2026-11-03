@@ -1,4 +1,4 @@
-// Clown Shot Counter helpers. (The Clown Prophecy Sampler part moved to roycho87/Clown-Prophecy-Experimental-.)
+// Clown Shot Counter helpers. (The Geiru Prophecy Sampler part moved to roycho87/Clown-Prophecy-Experimental-.)
 //  increment              -> the counter goes up by 1 each time you hit run (like a seed set to increment)
 //  increment after accept -> the counter goes up by 1 after the Prophecy Sampler finishes an accepted run
 //  decrement              -> the counter goes down by 1 each time you hit run (repair walks back)
