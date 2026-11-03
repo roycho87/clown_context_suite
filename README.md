@@ -14,6 +14,7 @@ The Geiru Context Suite stands on other people's work. I'm building off it, so a
 - **drozbay**: native H3 latent-mask support and the masked-extension method everything here relies on.
 - **kijai**: ComfyUI's MiniMax H3 support and context windows (used by Geiru Hybrid Windows).
 - **JalenBrunson**: [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows), which Geiru Hybrid Windows works like.
+- **TrentHunter82**: [TrentNodes](https://github.com/TrentHunter82/TrentNodes). Its degrade node made the bad frame 0 tests possible, which showed how much a clean frame 0 matters (the idea behind Geiru Keystone).
 - Everyone on the Banodoco Discord and r/StableDiffusion who tested, argued and shared results.
 
 **Geiru Hybrid Windows** is built on **kijai**'s MiniMax H3 context windows in ComfyUI and works the way **JalenBrunson**'s [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows) does. I just added the keystone and capstone to it. See [Geiru Hybrid Windows](#geiru-hybrid-windows).
