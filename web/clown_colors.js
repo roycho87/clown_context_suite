@@ -1,4 +1,4 @@
-// Every Clown Context Suite node is pink, so they stand out in any workflow.
+// Every Geiru Context Suite node is pink, so they stand out in any workflow.
 // A colour you set yourself on a node (right-click > Colors) is saved with the workflow and kept.
 import { app } from "../../scripts/app.js";
 
@@ -9,6 +9,7 @@ const CLOWN_NODES = new Set([
     "H3ClownChain",
     "H3ClownKeyframe",
     "H3ClownLateLock",
+    "H3ClownContextNoise",
     "H3ClownHybridWindows",
 ]);
 const TITLE_PINK = "#c2407a";

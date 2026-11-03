@@ -1,11 +1,11 @@
 """
-Clown Context Suite for MiniMax H3
+Geiru Context Suite for MiniMax H3
 ----------------------------------
 Chained continuation for MiniMax H3 in ComfyUI.
 
-    Clown Context           previous shot's TAIL -> this shot's HEAD (video and audio)
-    Clown Anchoring         a source's HEAD      -> this shot's TAIL (video and audio)
-    Clown Shot Counter      shot number: classic counter, or counted from saved latents
+    Geiru Context           previous shot's TAIL -> this shot's HEAD (video and audio)
+    Geiru Anchoring         a source's HEAD      -> this shot's TAIL (video and audio)
+    Geiru Shot Counter      shot number: classic counter, or counted from saved latents
 
 (Clown Prophecy and Clown Carryover moved to roycho87/Clown-Prophecy-Experimental-.)
 
@@ -28,7 +28,7 @@ except Exception:  # very old ComfyUI
     NestedTensor = None
 
 
-CATEGORY = "Clown Context Suite"
+CATEGORY = "Geiru Context Suite"
 
 FRAME_PER_TOKEN = (1, 4, 4, 4, 4)
 BLOCK = 17
@@ -249,6 +249,12 @@ class H3ClownContextExperimental:
                                    "tooltip": "Number of the first shot of your run. On that shot (or earlier) the previous latent is ignored."}),
         }
         req.update(AUDIO_INPUTS)
+        req["degradation_protection"] = ("BOOLEAN", {"default": True,
+            "label_on": "on - Keystone / Late Lock / Context Noise run", "label_off": "off - they pass through",
+            "tooltip": "One switch for the degradation protection nodes after this one (Geiru Keystone, Geiru Late Lock, "
+                       "Geiru Context Noise). On = each runs with its own settings (anything you turned off on its own node "
+                       "stays off). Off = they all pass through. Turn it on for long stretches of one scene, off around cuts "
+                       "and scene changes."})
         return {
             "required": req,
             "optional": {
@@ -266,9 +272,17 @@ class H3ClownContextExperimental:
             return []
         return ["previous_shot"] if previous_shot is None else []
 
-    def anchor(self, latent, head_frames, drop_last=0, drop_first=17, hold_audio=True, first_shot=1,
+    def anchor(self, latent, head_frames, *args, degradation_protection=True, **kwargs):
+        out = self._anchor(latent, head_frames, *args, **kwargs)[0]
+        out = dict(out)
+        out["geiru_protection"] = bool(degradation_protection)   # read by Keystone / Late Lock / Context Noise
+        if not degradation_protection:
+            print("[Geiru Context] degradation protection off - Keystone, Late Lock and Context Noise will pass through")
+        return (out,)
+
+    def _anchor(self, latent, head_frames, drop_last=0, drop_first=17, hold_audio=True, first_shot=1,
                audio_frames=0, audio_feather_ticks=0, shot_number=None, previous_shot=None):
-        who = "Clown Context Experimental"
+        who = "Geiru Context Experimental"
         if shot_number is not None and int(shot_number) <= int(first_shot):
             print(f"[{who}] shot {shot_number} is the first shot (first_shot = {first_shot}) - previous latent ignored, latent passed through unchanged")
             return (latent,)
@@ -412,9 +426,16 @@ class H3BlockTailAnchorExperimental:
             return []
         return ["next_shot"] if next_shot is None else []
 
-    def anchor(self, latent, tail_frames, drop_last=17, drop_first=0, hold_audio=True,
+    def anchor(self, latent, tail_frames, *args, **kwargs):
+        out = self._anchor(latent, tail_frames, *args, **kwargs)[0]
+        if out is not latent:                 # something is held at the end of this shot
+            out = dict(out)
+            out["geiru_anchored"] = True       # Keystone / Late Lock skip the capstone (it would sit in the same place)
+        return (out,)
+
+    def _anchor(self, latent, tail_frames, drop_last=17, drop_first=0, hold_audio=True,
                audio_frames=0, audio_feather_ticks=0, next_shot=None, first_shot=1, shot_number=None):
-        who = "Clown Anchoring Experimental"
+        who = "Geiru Anchoring Experimental"
         if shot_number is not None and int(shot_number) <= int(first_shot):
             print(f"[{who}] shot {shot_number} is the first shot (first_shot = {first_shot}) - next_shot not loaded, latent passed through unchanged")
             return (latent,)
@@ -593,16 +614,16 @@ class H3ClownShotCounter:
         else:
             last = self._saved_shot(latent_prefix)
             shot = last + 1
-            print(f"[Clown Shot Counter] count saved latents: last saved clip {last} -> shot {shot}")
+            print(f"[Geiru Shot Counter] count saved latents: last saved clip {last} -> shot {shot}")
             if last == 0 and self._auto_mode_only(latent_prefix):
-                print("[Clown Shot Counter] only auto-mode saves found (name_00001_.safetensors): those numbers restart "
+                print("[Geiru Shot Counter] only auto-mode saves found (name_00001_.safetensors): those numbers restart "
                       "every run, so they aren't counted - starting at shot 1. Use manual numbering on Save Latent "
                       "(or the classic counter) to count shots.")
         return {"ui": {"clown_shot": [shot], "clown_classic": [bool(use_classic_counter)]},
                 "result": (shot, max(0, shot - 1), shot > 1)}
 
 
-# ---- live folder check for the Clown Shot Counter display
+# ---- live folder check for the Geiru Shot Counter display
 try:
     from server import PromptServer
     from aiohttp import web as _web
@@ -626,7 +647,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "H3ClownContextExperimental": "Clown Context",
-    "H3BlockTailAnchorExperimental": "Clown Anchoring",
-    "H3ClownShotCounter": "Clown Shot Counter",
+    "H3ClownContextExperimental": "Geiru Context",
+    "H3BlockTailAnchorExperimental": "Geiru Anchoring",
+    "H3ClownShotCounter": "Geiru Shot Counter",
 }

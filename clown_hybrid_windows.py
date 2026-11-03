@@ -1,4 +1,4 @@
-"""Clowntext Hybrid Windows.
+"""Geiru Hybrid Windows (was Clowntext Hybrid Windows).
 
 One long MiniMax H3 render in overlapping windows, done the HybridWindows way (JalenBrunson's ComfyUI-HybridWindows,
 from the Rolling Diffusion paper), on top of kijai's MiniMax H3 context windows in ComfyUI (PR #17425,
@@ -32,8 +32,8 @@ import comfy.utils
 
 from .nodes import _split
 
-CATEGORY = "Clown Context Suite"
-WHO = "Clowntext Hybrid Windows"
+CATEGORY = "Geiru Context Suite"
+WHO = "Geiru Hybrid Windows"
 HYBRID = "hybrid"
 
 
@@ -157,7 +157,7 @@ def _clown_sampler_sample(executor, guider, sigmas, extra_args, callback, noise,
 
 def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image, denoise_mask, disable_pbar,
             h, model, shapes, multi, dims, unpack, pack, windows):
-    """Clowntext Hybrid Windows (like JalenBrunson's HybridWindows / Rolling Diffusion, plus keystone and capstone).
+    """Geiru Hybrid Windows (like JalenBrunson's HybridWindows / Rolling Diffusion, plus keystone and capstone).
     1. Window 1 runs steps 1..switch_step. Snapshot.
     2. Window 1 carries on to the end from the snapshot, only to get its finished frame 0 (keystone) and its last
        single-frame latent (capstone). That finish is thrown away and window 1 goes back to the snapshot.
@@ -504,4 +504,4 @@ class H3ClownHybridWindows:
 
 
 NODE_CLASS_MAPPINGS = {"H3ClownHybridWindows": H3ClownHybridWindows}
-NODE_DISPLAY_NAME_MAPPINGS = {"H3ClownHybridWindows": "Clowntext Hybrid Windows"}
+NODE_DISPLAY_NAME_MAPPINGS = {"H3ClownHybridWindows": "Geiru Hybrid Windows"}

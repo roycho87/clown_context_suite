@@ -1,6 +1,6 @@
-"""Clown Keystone and Clown Late Lock.
+"""Geiru Keystone and Geiru Late Lock.
 
-Clown Keystone uses latents from a source clip (clip 1 by default, set with source_clip) in every shot. Every later
+Geiru Keystone uses latents from a source clip (clip 1 by default, set with source_clip) in every shot. Every later
 clip's latent 0 in a chain is filled with a latent from the previous clip's tail, which was made mid-clip and already
 carries the drift; clip 1's latent 0 is the clean one. When the scene changes, a newer clip can be the source instead.
 - keystone = the source clip's first latent (frame 0, a single frame on its own). It's locked into this shot's latent 0.
@@ -12,12 +12,12 @@ Front: written into the shot's latent 0, locked. The chain's real latent 0 is al
 output after sampling, so the saved latent and the video keep the real frame.
 Back: not written into the shot. It's tacked onto the back of the video for each model call (locked) and cut off
 again, so nothing in the shot is replaced. At the back it lands in a 4-frame latent slot.
-Restore and the back both need the model: plug it through Keystone, or use Clown Late Lock.
+Restore and the back both need the model: plug it through Keystone, or use Geiru Late Lock.
 
-Clown Late Lock picks the step: the capstone is tacked on from swap_step, and the keystone slot is held empty (left as
+Geiru Late Lock picks the step: the capstone is tacked on from swap_step, and the keystone slot is held empty (left as
 noise the model doesn't change) until swap_step, then locked in. So the shot decides its own motion and pose first.
 
-Wire it after Clown Context (and Clown Anchoring), right before the sampler.
+Wire it after Geiru Context (and Geiru Anchoring), right before the sampler.
 """
 import torch
 
@@ -120,15 +120,20 @@ def _add_restore(model, latent, who):
     return m
 
 
+def _protection_off(latent):
+    """True when Geiru Context's degradation_protection switch is off (no switch upstream = on, as before)."""
+    return isinstance(latent, dict) and latent.get("geiru_protection", True) is False
+
+
 def _frames_before(n_latents):
     return _frames_of(n_latents)
 
-CATEGORY = "Clown Context Suite"
+CATEGORY = "Geiru Context Suite"
 PLACEMENTS = ["keystone front", "keystone front + back", "capstone front + back", "keystone front + capstone back"]
 
 
 class H3ClownKeyframe:
-    """Clown Keystone: the source clip's (clip 1 by default) keystone / capstone grafted onto every shot."""
+    """Geiru Keystone: the source clip's (clip 1 by default) keystone / capstone grafted onto every shot."""
 
     CATEGORY = CATEGORY
     RETURN_TYPES = ("LATENT", "MODEL")
@@ -136,8 +141,8 @@ class H3ClownKeyframe:
     FUNCTION = "graft"
     DESCRIPTION = ("Copies the source clip's first latent (clip 1 by default: frame 0, the clean start of the chain, before "
                    "any drift) into the start of this shot and locks it, so every shot starts from a clean, detailed frame. Put "
-                   "it after Clown Context, right before the sampler. Feed the source clip from a Load Latent fixed on that clip "
-                   "(outside the Chain group), and set source_clip to the same number. With Clown Context in front and the "
+                   "it after Geiru Context, right before the sampler. Feed the source clip from a Load Latent fixed on that clip "
+                   "(outside the Chain group), and set source_clip to the same number. With Geiru Context in front and the "
                    "model plugged through, the real latent 0 is put back after sampling; otherwise trim the first frame of each "
                    "shot when you stitch. With shot_number plugged in, nothing happens on the source clip's shot or earlier.")
 
@@ -145,7 +150,7 @@ class H3ClownKeyframe:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "latent": ("LATENT", {"tooltip": "The shot's AV latent (after Clown Context / Clown Anchoring)."}),
+                "latent": ("LATENT", {"tooltip": "The shot's AV latent (after Geiru Context / Geiru Anchoring)."}),
                 "enabled": ("BOOLEAN", {"default": True, "label_on": "on - graft the keystone / capstone", "label_off": "off - pass through"}),
                 "placement": (PLACEMENTS, {"default": PLACEMENTS[0],
                                            "tooltip": "keystone = the source clip's first latent (frame 0). capstone = its last "
@@ -162,7 +167,7 @@ class H3ClownKeyframe:
                                         "tooltip": "The source clip (a Load Latent fixed on the clip set in source_clip, clip 1 by "
                                                    "default): where the keystone (its first latent) and capstone (its last "
                                                    "single-frame latent) come from."}),
-                "shot_number": ("INT", {"forceInput": True, "tooltip": "From Clown Shot Counter. Skips the source clip's "
+                "shot_number": ("INT", {"forceInput": True, "tooltip": "From Geiru Shot Counter. Skips the source clip's "
                                                                        "shot and earlier."}),
                 "model": ("MODEL", {"tooltip": "Optional: plug the model through here (model out -> guider / Late Lock) so "
                                                "the chain's real latent 0 is put back into the output after sampling."}),
@@ -178,9 +183,12 @@ class H3ClownKeyframe:
 
     def graft(self, latent, enabled=True, keyframe=None, shot_number=None,
               placement="keystone front", model=None, source_clip=1, **_old):
-        who = "Clown Keystone"
+        who = "Geiru Keystone"
         if not bool(enabled):
             print(f"[{who}] off - latent passed through")
+            return (latent, model)
+        if _protection_off(latent):
+            print(f"[{who}] degradation protection is off on Geiru Context - latent passed through")
             return (latent, model)
         src_n = int(source_clip)
         if shot_number is not None and int(shot_number) <= src_n:
@@ -207,7 +215,7 @@ class H3ClownKeyframe:
                              "(same model and resolution needed).")
         old_masks = _carry_masks(latent, list(parts), packed, vi)
         old_vmask = old_masks[vi]
-        original_0 = video[:, :, 0:1].clone()   # the chain's own latent 0 (Clown Context's held frame)
+        original_0 = video[:, :, 0:1].clone()   # the chain's own latent 0 (Geiru Context's held frame)
         held_0 = old_vmask.shape == video.shape and float(old_vmask[:, :, 0:1].max()) < 0.5
         video = video.clone()
         key_src = 0                                          # keystone: the source clip's first latent
@@ -220,6 +228,9 @@ class H3ClownKeyframe:
         front_src, back_src = pick
         if back_src is not None and back <= 0:
             back_src = None
+        if back_src is not None and latent.get("geiru_anchored"):
+            back_src = None
+            print(f"[{who}] Geiru Anchoring holds the end of this shot - nothing tacked onto the back (front still used)")
         slots = [(0, front_src)]
         back_lat = src[:, :, back_src:back_src + 1].clone() if back_src is not None else None
         for dst, s_i in slots:
@@ -236,18 +247,20 @@ class H3ClownKeyframe:
         if back_lat is not None:
             note += f", {name(back_src)} (clip {src_n} latent {back_src}) tacked onto the back"
         out = _pack(latent, parts, masks, packed, who)
-        out["clown_keyframe_slots"] = [int(dst) for dst, _ in slots]   # tells Clown Late Lock what was grafted
+        out["clown_keyframe_slots"] = [int(dst) for dst, _ in slots]   # tells Geiru Late Lock what was grafted
         if back_lat is not None:
             out["clown_keyframe_back"] = back_lat                       # tacked on by the model patch, never written in
         if held_0:
-            out["clown_keyframe_originals"] = {0: original_0}             # always put back after sampling
+            originals = dict(latent.get("clown_keyframe_originals") or {})   # keep what Context Noise stored
+            originals[0] = original_0
+            out["clown_keyframe_originals"] = originals                    # always put back after sampling
         print(f"[{who}] shot {shot_number}: {placement}: {note}")
         if held_0 and model is None:
             print(f"[{who}] plug the model through Keystone or Late Lock to put the real latent 0 back after sampling")
         m = model
         if back_lat is not None:
             if model is None:
-                print(f"[{who}] the back needs the model plugged through Keystone or Clown Late Lock")
+                print(f"[{who}] the back needs the model plugged through Keystone or Geiru Late Lock")
             else:
                 m = _set_tack(m, back_lat, 0, who)
         return (out, _add_restore(m, out, who))
@@ -265,7 +278,7 @@ class H3ClownLateLock:
     RETURN_TYPES = ("MODEL", "LATENT")
     RETURN_NAMES = ("model", "latent")
     FUNCTION = "patch"
-    DESCRIPTION = ("Put it between Clown Keystone and the sampler: latent from Clown Keystone in, latent out to the sampler; "
+    DESCRIPTION = ("Put it between Geiru Keystone and the sampler: latent from Geiru Keystone in, latent out to the sampler; "
                    "model in, model out to the guider. Capstone (back): for the first swap_step steps nothing is there, then "
                    "Keystone's back latent is tacked onto the back of the video for each model call (locked) and cut off "
                    "again, so nothing in the shot is replaced. Keystone (front): for the first swap_step steps the slot is "
@@ -275,18 +288,21 @@ class H3ClownLateLock:
     def INPUT_TYPES(cls):
         return {"required": {
             "model": ("MODEL",),
-            "latent": ("LATENT", {"tooltip": "From Clown Keystone (passed through to the sampler)."}),
+            "latent": ("LATENT", {"tooltip": "From Geiru Keystone (passed through to the sampler)."}),
             "swap_step": ("INT", {"default": 4, "min": 0, "max": 200,
                                   "tooltip": "Steps before the graft comes in. 4 of 8 = steps 1-4 without, 5-8 with. "
                                              "0 = from the start."}),
             "slots": (LOCK_SLOTS, {"default": LOCK_SLOTS[0],
                                    "tooltip": "capstone slot = Keystone's back latent, tacked onto the back. keystone slot = "
-                                              "latent 0 (front). Only what Clown Keystone actually set up is touched."}),
+                                              "latent 0 (front). Only what Geiru Keystone actually set up is touched."}),
         }}
 
     def patch(self, model, latent, swap_step=4, slots=LOCK_SLOTS[0]):
+        if _protection_off(latent):
+            print("[Geiru Late Lock] degradation protection is off on Geiru Context - model passed through")
+            return (_add_restore(model, latent, "Geiru Late Lock"), latent)
         slots = _OLD_SLOTS.get(slots, slots)
-        who = "Clown Late Lock"
+        who = "Geiru Late Lock"
         parts = _split(latent["samples"])
         video = max(parts, key=lambda p: p.ndim)
         if video.ndim != 5:
@@ -339,4 +355,4 @@ class H3ClownLateLock:
 
 
 NODE_CLASS_MAPPINGS = {"H3ClownKeyframe": H3ClownKeyframe, "H3ClownLateLock": H3ClownLateLock}
-NODE_DISPLAY_NAME_MAPPINGS = {"H3ClownKeyframe": "Clown Keystone", "H3ClownLateLock": "Clown Late Lock"}
+NODE_DISPLAY_NAME_MAPPINGS = {"H3ClownKeyframe": "Geiru Keystone", "H3ClownLateLock": "Geiru Late Lock"}

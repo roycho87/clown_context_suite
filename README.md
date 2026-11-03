@@ -1,24 +1,60 @@
-# Clown Context Suite
+# Geiru Context Suite
 
 ComfyUI nodes for chaining MiniMax H3 clips without the quality slowly falling apart.
 
+> **New name.** This used to be the **Clown Context Suite**. ClownsharkBatwing's [RES4LYF](https://github.com/ClownsharkBatwing/RES4LYF) nodes are already called Clown-everything, and they're some of the most widely used nodes in ComfyUI, so to avoid mix-ups the suite is now named after the clown herself: **Geiru**. Only the names you see changed. The internal node names (`H3Clown...`) are the same, so workflows saved with the old names still load.
+
 ## Credits
 
-Clown Context Suite stands on the work of **seitanism** and **nikodemon**, who came before it. I'm just building off their work, so all credit to them for laying the groundwork.
+The Geiru Context Suite stands on other people's work. I'm building off it, so all credit to them:
 
-**Clowntext Hybrid Windows** is built on **kijai**'s MiniMax H3 context windows in ComfyUI and works the way **JalenBrunson**'s [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows) does. All credit to them; I just added the keystone and capstone to it, to help everyone make longer videos without degradation. See [Clowntext Hybrid Windows](#clowntext-hybrid-windows).
+- **seitanism**: [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef). Holding the previous shot's real latents at the start of the next one, masked, is his method; Geiru Context is built on it.
+- **NikoDemon80**: [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), the Chain node (copied in as Geiru Chain), and months of drift measurements that shaped how this was tested.
+- **ethanfel (Lumifel)**: the context noise idea behind **Geiru Context Noise** (see [ComfyUI-MiniMaxH3-Context-Loop](https://github.com/ethanfel/ComfyUI-MiniMaxH3-Context-Loop)), and [ComfyUI-H3-Prompt-IDE](https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE).
+- **drozbay**: native H3 latent-mask support and the masked-extension method everything here relies on.
+- **kijai**: ComfyUI's MiniMax H3 support and context windows (used by Geiru Hybrid Windows).
+- **JalenBrunson**: [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows), which Geiru Hybrid Windows works like.
+- **obvpm**: the odd/even shot method behind Geiru Anchoring.
+- **BittiAI**: the woman-running-on-a-beach benchmark used for the final test.
+- **Blink**: for pointing out the Clown name clash.
+- Everyone on the Banodoco Discord and r/StableDiffusion who tested, argued and shared results.
 
-**Clown Chain** is nikodemon's Chain node from [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), copied in and renamed (GPL-3.0, like this pack). See [Clown Chain](#clown-chain) for why.
+**Geiru Hybrid Windows** is built on **kijai**'s MiniMax H3 context windows in ComfyUI and works the way **JalenBrunson**'s [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows) does. I just added the keystone and capstone to it. See [Geiru Hybrid Windows](#geiru-hybrid-windows).
+
+**Geiru Chain** is nikodemon's Chain node from [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), copied in unchanged apart from its name (GPL-3.0, like this pack). See [Geiru Chain](#geiru-chain) for why.
 
 ## The problem
 
 When you chain H3 clips, each new clip starts from the tail of the last one. You tell the model where to start, but never where to end. Detail is lost a little in every clip, and because each clip starts from the one before, the loss stacks up over the chain.
 
-## The fix: Clown Keystone (recommended)
+## The fix: Geiru Keystone (recommended)
 
-Pull every shot back to clip 1. **Clown Context** pins the previous shot's tail to the front of each shot, so the motion carries over. **Clown Keystone** locks clip 1's first frame into the start of every shot and tacks clip 1's capstone onto the back, and **Clown Late Lock** brings the capstone in only for the last steps, so the shot picks its own pose first. Every shot is pulled back toward how clip 1 looked, so the loss can't stack up, and with Clown Context in front of Keystone the real frames are put back afterwards, so nothing from clip 1 ends up in the clips.
+Pull every shot back to clip 1. **Geiru Context** pins the previous shot's tail to the front of each shot, so the motion carries over. **Geiru Keystone** locks clip 1's first frame into the start of every shot and tacks clip 1's capstone onto the back, and **Geiru Late Lock** brings the capstone in only for the last steps, so the shot picks its own pose first. Every shot is pulled back toward how clip 1 looked, so the loss can't stack up, and with Geiru Context in front of Keystone the real frames are put back afterwards, so nothing from clip 1 ends up in the clips.
 
-It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/mad_clown_inventor_example.json`. See [Clown Keystone and Clown Late Lock](#clown-keystone-and-clown-late-lock).
+It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/mad_clown_inventor_example.json`. See [Geiru Keystone and Geiru Late Lock](#geiru-keystone-and-geiru-late-lock).
+
+## Degradation protection (one switch)
+
+Three nodes keep a long chain from drifting. Each keeps its own node and settings:
+
+| Node | What it does |
+|---|---|
+| **Geiru Keystone** | Locks the source clip's clean first frame (keystone) into the start of every shot and/or tacks its capstone onto the back. |
+| **Geiru Late Lock** | Brings Keystone's latents in only from a chosen step, so the shot picks its own pose first. |
+| **Geiru Context Noise** | ethanfel's context noise: the held frames get some of the sampler's current noise, fading to none at the join, so H3 doesn't copy them so exactly. |
+
+**Geiru Context** has a `degradation_protection` switch that turns all three on or off together:
+
+- **On** (default): each of them runs with its own settings. If you've turned one off on its own node, it stays off.
+- **Off**: they all pass through, as if they weren't there.
+
+Set them up once, then flip one switch: on for long stretches of one continuous scene, off around cuts and scene changes. In testing, a hard cut or a new environment already resets the drift on its own, so protection is only needed while the scene stays the same. When the scene changes, point Keystone's `source_clip` at the first clip that fully shows the new scene (not the transition clip).
+
+**Wiring:** Geiru Context → Geiru Context Noise → (Geiru Anchoring) → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise, Keystone and Late Lock.
+
+**With Geiru Anchoring:** Anchoring holds frames at the end of the shot, which is where the capstone would go. So when Anchoring is holding something, Keystone and Late Lock skip the capstone automatically (the keystone at the front is still used). Nothing to set.
+
+**Results:** on a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a woman running along a beach (BittiAI's benchmark), it still looked like clip 1 at clip 20 while the plain chain had fallen apart (first look; the full 50-clip results are being written up). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
 
 ## Clown Prophecy has moved
 
@@ -28,17 +64,18 @@ Clown Prophecy (with Clown Carryover and the Prophecy example workflows) now liv
 
 | Node | What it does |
 |---|---|
-| **Clown Context** | Holds the previous shot's last frames (and audio) at the start of this shot. |
-| **Clown Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug any source into `next_shot`, e.g. an ending from Clown Prophecy (in its own repo now). |
-| **Clown Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
-| **Clown Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
-| **Clown Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. With Clown Context in front of it, puts the real frame back afterwards. |
-| **Clown Late Lock** | Picks the step Keystone's latents come in: the capstone is tacked onto the back from that step, so the shot picks its own pose first. |
-| **Clowntext Hybrid Windows** | One long render (a minute or more) in overlapping windows, instead of a chain of clips: each window renders its first steps in order, then the last steps are blended over the whole video. Clip 1's keystone and capstone go into every window. |
+| **Geiru Context** | Holds the previous shot's last frames (and audio) at the start of this shot. Its `degradation_protection` switch turns Keystone, Late Lock and Context Noise on or off together. |
+| **Geiru Anchoring** | Holds a source's frames (and audio) at the end of this shot. Plug any source into `next_shot`, e.g. an ending from Clown Prophecy (in its own repo now). |
+| **Geiru Shot Counter** | The shot number, plus `previous_shot` and `continuation` (true from shot 2 on). Can also follow the H3 Motion Context Chain node's count. |
+| **Geiru Chain** | nikodemon's Motion Context Chain node, renamed: Approve, Run/Re-roll, Chain, Reset and Clear buttons that drive the Load / Save Latent shot numbers. |
+| **Geiru Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back, so the colours and look don't drift. With Geiru Context in front of it, puts the real frame back afterwards. |
+| **Geiru Late Lock** | Picks the step Keystone's latents come in: the capstone is tacked onto the back from that step, so the shot picks its own pose first. |
+| **Geiru Context Noise** | ethanfel's context noise on the held frames: part of the current noise, fading to none at the join. The real held latents are put back after sampling. |
+| **Geiru Hybrid Windows** | One long render (a minute or more) in overlapping windows, instead of a chain of clips: each window renders its first steps in order, then the last steps are blended over the whole video. Clip 1's keystone and capstone go into every window. |
 
-Everything shows up under the **Clown Context Suite** category.
+Everything shows up under the **Geiru Context Suite** category.
 
-## Clown Shot Counter
+## Geiru Shot Counter
 
 | Setting | Meaning |
 |---|---|
@@ -48,11 +85,11 @@ Everything shows up under the **Clown Context Suite** category.
 
 The box at the bottom of the node shows the shot the last run used, and in count mode how many latents are saved and which shot is next.
 
-## Clown Chain
+## Geiru Chain
 
-Clown Chain is a copy of the Chain node from nikodemon's [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), renamed. We put it here because Motion Context and seitanism's [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) use the same node names, so you can only have one of them installed, and MultiRef has no Chain node. With Clown Chain you can use the Clown nodes with either pack and don't have to choose.
+Geiru Chain is a copy of the Chain node from nikodemon's [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), renamed. We put it here because Motion Context and seitanism's [ComfyUI-H3-Motion-Context-MultiRef](https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef) use the same node names, so you can only have one of them installed, and MultiRef has no Chain node. With Geiru Chain you can use the Geiru nodes with either pack and don't have to choose.
 
-It works exactly like the original. Keep **Load Latent**, **Save Latent** and **Clown Chain** in the same canvas group. Either pack's Load / Save Latent nodes work.
+It works exactly like the original. Keep **Load Latent**, **Save Latent** and **Geiru Chain** in the same canvas group. Either pack's Load / Save Latent nodes work.
 
 | Button | What it does |
 |---|---|
@@ -64,45 +101,45 @@ It works exactly like the original. Keep **Load Latent**, **Save Latent** and **
 
 If you have nikodemon's Motion Context installed you can use its own Chain node instead; everything below works the same with either.
 
-On the first shot Clown Context doesn't run the Load Latent node at all, so MultiRef's Load (which errors on an empty folder at `clip_index` 0) is fine.
+On the first shot Geiru Context doesn't run the Load Latent node at all, so MultiRef's Load (which errors on an empty folder at `clip_index` 0) is fine.
 
 ## Using it with a Chain node
 
-Set the counter's `shot_counter` to **follow motion context**. The counter then copies the `clip_index` from the Motion Context **Save Latent** node every run, so the shot number lines up with the Chain node's count (Clown Chain or Motion Context's Chain). The counter only reads that number and never changes it; the Chain node stays in charge. Leave Load and Save Latent's `clip_index` as widgets (not wired) so the Chain buttons can move them.
+Set the counter's `shot_counter` to **follow motion context**. The counter then copies the `clip_index` from the Motion Context **Save Latent** node every run, so the shot number lines up with the Chain node's count (Geiru Chain or Motion Context's Chain). The counter only reads that number and never changes it; the Chain node stays in charge. Leave Load and Save Latent's `clip_index` as widgets (not wired) so the Chain buttons can move them.
 
-## Clown Context and Clown Anchoring
+## Geiru Context and Geiru Anchoring
 
 Both copy real latents into the shot at matching block positions and mask them so the sampler keeps them. Frame counts go 5, 22, 39, 56, 73… (17n + 5); the drop settings go in steps of 17.
 
 - `head_frames` (Context) is the overlap with the previous shot. If you use pre-split audio, set it to the audio overlap (e.g. 39).
 - `drop_last` / `drop_first` trim the held frames from either end.
 - `hold_audio` holds the audio under the held frames too.
-- `shot_number` / `first_shot`: both nodes take an optional `shot_number` from the Clown Shot Counter. On the first shot they don't load their source at all and pass the latent through. Handy when Anchoring's `next_shot` comes from a Load Latent of a clip that isn't made yet. Leave it unplugged and they work as before.
+- `shot_number` / `first_shot`: both nodes take an optional `shot_number` from the Geiru Shot Counter. On the first shot they don't load their source at all and pass the latent through. Handy when Anchoring's `next_shot` comes from a Load Latent of a clip that isn't made yet. Leave it unplugged and they work as before.
 
 **Recommended settings:**
 
 | Node | Frames | Drop |
 |---|---|---|
-| **Clown Context** | `head_frames` 39 | `drop_last` 17 |
-| **Clown Anchoring** | `tail_frames` 56 | `drop_first` 17 |
+| **Geiru Context** | `head_frames` 39 | `drop_last` 17 |
+| **Geiru Anchoring** | `tail_frames` 56 | `drop_first` 17 |
 
 Rule that works:
 - The Anchoring frames must outnumber the Context frames.
 
-**Workflows that use Clown Anchoring** (in [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-)):
+**Workflows that use Geiru Anchoring** (in [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-)):
 
-- [sane_person_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_person_example.json): Clown Chain + Prophecy + Anchoring.
+- [sane_person_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_person_example.json): Geiru Chain + Prophecy + Anchoring.
 - [sane_clown_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_clown_example.json): the same, with Clown Carryover.
 - [insane_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/insane_example.json): the vlog, pre-split audio and one prompt file per shot.
 
-Two more are in this repo's `example_workflows` (moved over from my old packs and switched to this suite's Clown Context and Clown Anchoring, same settings):
+Two more are in this repo's `example_workflows` (moved over from my old packs and switched to this suite's Geiru Context and Geiru Anchoring, same settings):
 
-- [everyone_wants_a_piece_of_the_clown.json](example_workflows/everyone_wants_a_piece_of_the_clown.json): a Motion Context chain with Clown Context (39, drop_first 17) and Clown Anchoring (39, drop_last 17).
-- [withers_has_big_nattys.json](example_workflows/withers_has_big_nattys.json): the static vlog (odd shots fresh, even shots continue). On even shots, Clown Context (39, drop_first 17) holds the end of the shot before at the start, and Clown Anchoring (39, drop_last 17) holds the start of the shot after at the end. Motion Context's Load / Save Latent nodes are still used for the clips.
+- [everyone_wants_a_piece_of_the_clown.json](example_workflows/everyone_wants_a_piece_of_the_clown.json): a Motion Context chain with Geiru Context (39, drop_first 17) and Geiru Anchoring (39, drop_last 17).
+- [withers_has_big_nattys.json](example_workflows/withers_has_big_nattys.json): the static vlog (odd shots fresh, even shots continue). On even shots, Geiru Context (39, drop_first 17) holds the end of the shot before at the start, and Geiru Anchoring (39, drop_last 17) holds the start of the shot after at the end. Motion Context's Load / Save Latent nodes are still used for the clips.
 
 ### Joining the clips
 
-Each clip is saved whole (all of its frames, overlap included), so trim them when you join them. `drop_last` doesn't remove the overlap, it only changes what's in it. With Clown Context at 39, `drop_last` 17:
+Each clip is saved whole (all of its frames, overlap included), so trim them when you join them. `drop_last` doesn't remove the overlap, it only changes what's in it. With Geiru Context at 39, `drop_last` 17:
 
 - The new shot's frames 0-21 are exact copies of the previous shot's frames 153-174 (the held part).
 - The new shot's frames 22-38 are freshly made, but they cover the same moment as the previous shot's frames 175-191 (the dropped part).
@@ -114,11 +151,11 @@ So the two clips still share 39 frames of time: 22 identical, and 17 that are tw
 
 Don't cut the first 39 frames off the next clip instead: that joins two different takes of the same moment and can show a small jump. The last clip is always kept whole. For other settings, the overlap is `head_frames` and the identical part is `head_frames` minus the drops.
 
-**[Seamless Video Combiner](https://github.com/roycho87/workflows/blob/main/workflows/seamless_video_combiner/clussy_origin_story.json)** (in my workflows repo) does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for Clown chains: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
+**[Seamless Video Combiner](https://github.com/roycho87/workflows/blob/main/workflows/seamless_video_combiner/clussy_origin_story.json)** (in my workflows repo) does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for Geiru chains: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
 
-## Clown Keystone and Clown Late Lock
+## Geiru Keystone and Geiru Late Lock
 
-Every shot in a chain is made from the one before it, so small colour and sharpness changes build up. Clown Keystone puts a latent from clip 1 into every shot, so each one is pulled back to how clip 1 looked.
+Every shot in a chain is made from the one before it, so small colour and sharpness changes build up. Geiru Keystone puts a latent from clip 1 into every shot, so each one is pulled back to how clip 1 looked.
 
 - **keystone** = clip 1's first frame (frame 0).
 - **capstone** = a frame from the end of clip 1 (frame 187 of a 192-frame clip).
@@ -127,10 +164,10 @@ Every shot in a chain is made from the one before it, so small colour and sharpn
 
 **source_clip:** you can pick a different source clip at any point in the chain. If the scene changes, set `source_clip` to a newer clip (and the Load Latent feeding Keystone to the same clip), and that clip's keystone and capstone are used from then on. Shots up to and including the source clip pass through untouched.
 
-- **Front:** the keystone (or capstone) is locked into the shot's latent 0. When **Clown Context** comes before Keystone, the shot's latent 0 is a real frame held from the previous shot, and after sampling it's put back into the output, so the saved latent and the video keep the real frame. In a workflow without Clown Context (for example plain Motion Context), the shot has no real latent 0 of its own to put back, so each clip's first frame stays clip 1's frame: it still works as a detail anchor, just trim that one frame when you join.
+- **Front:** the keystone (or capstone) is locked into the shot's latent 0. When **Geiru Context** comes before Keystone, the shot's latent 0 is a real frame held from the previous shot, and after sampling it's put back into the output, so the saved latent and the video keep the real frame. In a workflow without Geiru Context (for example plain Motion Context), the shot has no real latent 0 of its own to put back, so each clip's first frame stays clip 1's frame: it still works as a detail anchor, just trim that one frame when you join.
 - **Back:** nothing in the shot is replaced. The latent is tacked on after the shot's last latent for each model call (locked) and cut off again, so it's never in the output.
 
-Restore and the back both need the model, so plug the model through Keystone (model in, model out to the guider) or use Clown Late Lock.
+Restore and the back both need the model, so plug the model through Keystone (model in, model out to the guider) or use Geiru Late Lock.
 
 | Setting | Meaning |
 |---|---|
@@ -142,9 +179,9 @@ Restore and the back both need the model, so plug the model through Keystone (mo
 |---|---|
 | `source clip (keystone / capstone)` | A Load Latent fixed on the source clip (clip 1 by default). Keep it **outside** the Chain group so the Chain buttons don't change its number. |
 | `model` | Optional. Plug it through here (model out to the guider) if you don't use Late Lock: then the back is tacked on from step 1 and latent 0 is restored. |
-| `shot_number` | From Clown Shot Counter. On the source clip's shot and earlier nothing is grafted (the source clip doesn't exist yet). |
+| `shot_number` | From Geiru Shot Counter. On the source clip's shot and earlier nothing is grafted (the source clip doesn't exist yet). |
 
-**Clown Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. `swap_step` (default 4) is when Keystone's latents come in:
+**Geiru Late Lock** goes between Keystone and the sampler: latent from Keystone in, latent out to the sampler; model in, model out to the guider. `swap_step` (default 4) is when Keystone's latents come in:
 
 - **Capstone (back):** nothing is there for the first `swap_step` steps, then it's tacked onto the back for the rest, so nothing pulls on her motion and pose while the shot decides them.
 - **Keystone (front):** the slot is held empty (left as noise the model doesn't change) for the first `swap_step` steps, then locked in.
@@ -159,9 +196,9 @@ https://github.com/user-attachments/assets/3002019d-7d6d-4afc-9592-09a3c201fb78
 
 In a 10-clip test (measured about 20 frames from the end of clip 10), colour drift from clip 1 went from 6.4 with no Keystone, to 3.9 with keystone front, to 2.9 with keystone front + Late Lock capstone. Over-sharpening dropped as well. (That test used the earlier version, which wrote the capstone into the shot's last single-frame slot instead of tacking it on.)
 
-**Joining:** with Clown Context in front of Keystone and the model plugged through Keystone or Late Lock, nothing from clip 1 ends up in the saved clips, so join them the normal way (cut the last 39 frames of each clip). Without the model, or without Clown Context, latent 0 can't be put back and stays clip 1's frame, so use the 17 + 22 cut instead: cut the last 17 frames of each clip and the first 22 of the next (Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22).
+**Joining:** with Geiru Context in front of Keystone and the model plugged through Keystone or Late Lock, nothing from clip 1 ends up in the saved clips, so join them the normal way (cut the last 39 frames of each clip). Without the model, or without Geiru Context, latent 0 can't be put back and stays clip 1's frame, so use the 17 + 22 cut instead: cut the last 17 frames of each clip and the first 22 of the next (Seamless Video Combiner: **Use Beginning pair** on, Beginning Overlap 39, Beginning Join 22).
 
-## Clowntext Hybrid Windows
+## Geiru Hybrid Windows
 
 ### Credits
 
@@ -200,17 +237,17 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 
 ### Mad Clown Inventor example
 
-`example_workflows/mad_clown_inventor_example.json` is a Clown Chain workflow with **Clown Keystone** + **Clown Late Lock**: Clown Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back`, and Late Lock on the capstone at step 4.
+`example_workflows/mad_clown_inventor_example.json` is a Geiru Chain workflow with **Geiru Keystone** + **Geiru Late Lock**: Geiru Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back`, and Late Lock on the capstone at step 4.
 
 1. Load your reference pictures and write the prompt in the **H3 Prompt IDE** node.
 2. Press **Chain** (or **Run/Re-roll** for one shot). Don't use ComfyUI's Run button.
-3. Keep Load Latent, Save Latent and Clown Chain inside their group, and the clip 1 Load Latent outside it.
+3. Keep Load Latent, Save Latent and Geiru Chain inside their group, and the clip 1 Load Latent outside it.
 
 Late Lock does the restore, so join the clips the normal way (see [Joining the clips](#joining-the-clips)).
 
 ### Clown Coaster example
 
-`example_workflows/clown_coaster_example.json` is a 60-second **Clowntext Hybrid Windows** render in one go: a first-person space roller coaster where only the rider's gloved hands are seen. A rocket launch throws her onto the track, then a loop-de-loop, ghost space stingrays, down to Mars, she hits a HYPERDRIVE button, a ride over the Sun, and around a black hole.
+`example_workflows/clown_coaster_example.json` is a 60-second **Geiru Hybrid Windows** render in one go: a first-person space roller coaster where only the rider's gloved hands are seen. A rocket launch throws her onto the track, then a loop-de-loop, ghost space stingrays, down to Mars, she hits a HYPERDRIVE button, a ride over the Sun, and around a black hole.
 
 - 1433 frames (60 s) in 8 windows of 226 frames, overlap 39.
 - 8 prompt nodes, one per window, joined in order with **Conditioning Combine**, with `split_conds_to_windows` on.
@@ -220,7 +257,7 @@ Load your subject picture into Picture 1 and press ComfyUI's Run. The length and
 
 ### Clowns for Picard example
 
-**Top:** normal hybrid windows (keystone, capstone and `finished_handoff` off). **Bottom:** Clowntext Hybrid Windows (all three on). Same seed, prompts and settings otherwise.
+**Top:** normal hybrid windows (keystone, capstone and `finished_handoff` off). **Bottom:** Geiru Hybrid Windows (all three on). Same seed, prompts and settings otherwise.
 
 https://github.com/user-attachments/assets/840d5913-4df5-488a-ae09-3f3056f7e9b7
 
