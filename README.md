@@ -52,7 +52,30 @@ Set them up once, then flip one switch: on for long stretches of one continuous 
 
 **With Geiru Anchoring:** Anchoring holds frames at the end of the shot, which is where the capstone would go. So when Anchoring is holding something, Keystone and Late Lock skip the capstone automatically (the keystone at the front is still used). Nothing to set.
 
-**Results:** on a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a woman running along a beach, it still looked like clip 1 at clip 20 while the plain chain had fallen apart (first look; the full 50-clip results are being written up). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
+**Results:** on a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a 50-clip chain through four scenes, it held where the plain chain fell apart (see [The 50-clip test](#the-50-clip-test)). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
+
+## The 50-clip test
+
+One 50-clip chain (8-second clips, about 5 minutes 20 seconds stitched), rendered twice with the same prompts, seed and settings: once with degradation protection on, once as a plain chain. It runs through four scenes:
+
+| Clips | Scene | Protection |
+|---|---|---|
+| 1–20 | Running along a beach, camera tracking | Keystone + capstone from clip 1, context noise |
+| 21–22 | Slows down and sits at a beach café | Keystone off, context noise on |
+| 23–30 | Sitting at the café, still camera | Keystone + capstone from clip 22 |
+| 31–40 | Walking through a changing town | Keystone off, context noise on |
+| 41–42 | Sits down on a garden sofa | Keystone off, context noise on |
+| 43–50 | Sitting in the garden, still camera | Keystone + capstone from clip 42 |
+
+The end of each section (protection on, top; plain chain, bottom):
+
+![50-clip test, end of each section](https://raw.githubusercontent.com/roycho87/NerdNotes/main/20261101/media/beach_compare.png)
+
+- **Beach:** by clip 20 the plain chain has fallen apart (glitchy sky, burnt skin, the sand more than twice as gritty). With protection it's still clean, though about 12 levels darker than clip 1.
+- **Café and garden:** with protection there's barely any drift (the garden stays flat for 8 clips); the plain chain keeps getting darker.
+- **Scene changes reset the drift on their own,** which is why protection is a switch: on for long single-scene stretches, off around cuts.
+
+Full numbers, every clip of both chains, and how it was measured: [NerdNotes, section 10](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md#10-beach-benchmark-a-50-clip-chain-through-four-scenes).
 
 ## Geiru Prophecy has moved
 
