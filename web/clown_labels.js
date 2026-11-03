@@ -1,5 +1,5 @@
 // Frame math + icons on the clown nodes' frame selectors.
-//   🎈 = Clown Context settings, 🤡 = Clown Anchoring settings
+//   🎈 = Geiru Context settings, 🤡 = Geiru Anchoring settings
 //   e.g. frames 73, drop 17  ->  "🎈 context_drop_last · 17 : 56 total"
 import { app } from "../../scripts/app.js";
 

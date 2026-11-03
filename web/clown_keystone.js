@@ -1,4 +1,4 @@
-// Clown Keystone: show the keystone / capstone terms on the node (the saved input names stay the same), and put
+// Geiru Keystone: show the keystone / capstone terms on the node (the saved input names stay the same), and put
 // workflows saved with an older widget layout back on the right widgets.
 //   oldest: enabled, keyframe_mask, first_shot (source clip), placement
 //   then:   enabled, placement
