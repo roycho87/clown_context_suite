@@ -2637,7 +2637,9 @@
         0.8,
         "linear",
         true
-      ]
+      ],
+      "color": "#c2407a",
+      "bgcolor": "#6e2347"
     }
   ],
   "links": [
