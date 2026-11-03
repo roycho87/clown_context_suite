@@ -55,7 +55,7 @@ Set them up once, then flip one switch: on for long stretches of one continuous 
 
 ## Geiru Prophecy has moved
 
-Geiru Prophecy (with Clown Carryover and the Prophecy example workflows) now lives in its own repo: [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-). Geiru Prophecy was moved there because it is too inconsistent and experimental to be considered a finished node. Keystone and Capstone are a much more promising direction.
+Geiru Prophecy (with Clown Carryover and the Prophecy example workflows) now lives in its own repo: [Geiru-Prophecy-Experimental-](https://github.com/roycho87/Geiru-Prophecy-Experimental-). Geiru Prophecy was moved there because it is too inconsistent and experimental to be considered a finished node. Keystone and Capstone are a much more promising direction.
 
 ## Nodes
 
@@ -123,11 +123,11 @@ Both copy real latents into the shot at matching block positions and mask them s
 Rule that works:
 - The Anchoring frames must outnumber the Context frames.
 
-**Workflows that use Geiru Anchoring** (in [Clown-Prophecy-Experimental-](https://github.com/roycho87/Clown-Prophecy-Experimental-)):
+**Workflows that use Geiru Anchoring** (in [Geiru-Prophecy-Experimental-](https://github.com/roycho87/Geiru-Prophecy-Experimental-)):
 
-- [sane_person_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_person_example.json): Geiru Chain + Prophecy + Anchoring.
-- [sane_clown_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/sane_clown_example.json): the same, with Clown Carryover.
-- [insane_example.json](https://github.com/roycho87/Clown-Prophecy-Experimental-/blob/main/example_workflows/insane_example.json): the vlog, pre-split audio and one prompt file per shot.
+- [sane_person_example.json](https://github.com/roycho87/Geiru-Prophecy-Experimental-/blob/main/example_workflows/sane_person_example.json): Geiru Chain + Prophecy + Anchoring.
+- [sane_clown_example.json](https://github.com/roycho87/Geiru-Prophecy-Experimental-/blob/main/example_workflows/sane_clown_example.json): the same, with Clown Carryover.
+- [insane_example.json](https://github.com/roycho87/Geiru-Prophecy-Experimental-/blob/main/example_workflows/insane_example.json): the vlog, pre-split audio and one prompt file per shot.
 
 Two more are in this repo's `example_workflows` (moved over from my old packs and switched to this suite's Geiru Context and Geiru Anchoring, same settings):
 
@@ -286,7 +286,7 @@ Clone into `ComfyUI/custom_nodes/` and restart ComfyUI:
 
 ```
 cd ComfyUI/custom_nodes
-git clone https://github.com/roycho87/clown_context_suite
+git clone https://github.com/roycho87/geiru_context_suite
 ```
 
 No extra Python packages needed.
