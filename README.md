@@ -229,6 +229,8 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 | `freenoise` | Reuses window 1's noise for every window: more consistent, but motion can repeat. Off gives more variety. |
 | `split_conds_to_windows` | Give each window its own prompt (see below). |
 | `detail_latent` | Optional: use this latent's first frame as the keystone instead of window 1's. |
+| `context_noise` | ethanfel's context noise, only while an overlap is locked in: during each window's own steps (1 to `switch_step`), its locked overlap gets part of the current noise instead of being fully clean, most at the start of the overlap and fading to none at the join. The keystone slot stays clean, the blended steps aren't touched, and the overlap the window before made is kept as it was. Off by default. |
+| `context_noise_strength` | How much noise the first overlap latent gets (0.8 default, 1 = as much as the new latents). |
 | `sound_first` | Off by default. On: renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
 
 **One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.

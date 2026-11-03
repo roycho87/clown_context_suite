@@ -12,6 +12,9 @@ comfy/context_windows.py, GPL-3). What this node adds is the keystone and capsto
    window's first slot, and the capstone is tacked onto its back from capstone_step (and cut off again).
 4. The rest of the steps run as kijai's blended windows over the whole video.
 
+context_noise (off by default): ethanfel's (Lumifel's) context noise on each window's pinned overlap during its own
+steps: part of the current noise, fading to none at the join, instead of locking the overlap fully clean.
+
 sound_first (off by default): the sound is rendered first on its own (blended windows on every step, picture at 64x64), then locked in,
 so the main render only makes the picture.
 
@@ -68,6 +71,7 @@ class ClownContextHandler(cw.IndexListContextHandler):
         self.only_window = None              # None = normal blended windows, int = run only this window
         self.window_subset = None
         self.mask_conds = None               # model mask conds for the single-window pass
+        self.context_noise = 0.0             # ethanfel's context noise on the pinned overlap (0 = off)
 
     def _with_masks(self, cond_list):
         if cond_list is None or self.mask_conds is None:
@@ -112,6 +116,30 @@ class ClownContextHandler(cw.IndexListContextHandler):
             else:
                 out.append(finalized[0])
         return out
+
+
+def _noise_ramp(mask, pinned, new, strength, dim):
+    """ethanfel's (Lumifel's) context noise on a window's pinned overlap: instead of locking the overlap fully clean, give
+    it part of the current noise, most at the start of the overlap and fading to none at the join with the new latents.
+    The sampler and the model both read the partial mask (a value m = m x the current noise level). Window positions
+    already made by an earlier window are never changed by this window, so the real overlap is kept."""
+    pinned = sorted(pinned)
+    if not pinned:
+        return []
+    join = min(new) if new else pinned[-1] + 1
+    before = [i for i in pinned if i < join]          # the run of pinned latents leading up to the new ones
+    if not before:
+        return []
+    out = []
+    n = len(before)
+    for j, i in enumerate(before):
+        w = 1.0 - j / max(1, n - 1) if n > 1 else 0.0  # 1 at the start of the overlap, 0 at the join
+        v = float(strength) * w
+        if v <= 0:
+            continue
+        mask[_ix(dim, [i])] = v
+        out.append((i, round(v, 3)))
+    return out
 
 
 def _pass_args(extra_args, n):
@@ -208,6 +236,7 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
     def one_window(sig, wi, state, slot=None, slot_src=None):
         """Run window wi on sig from `state`. Pinned positions (done) are locked to their clean guess."""
         act = per_window[wi]
+        ramp = []
         li = [p.clone() for p in state]
         m = [torch.zeros_like(p) for p in base_parts]
         for mi in range(len(shapes)):
@@ -220,12 +249,26 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
             if pinned:
                 sl = _ix(dims[mi], pinned)
                 li[mi][sl] = pins[mi][sl]
+                if mi == 0 and h.context_noise > 0:
+                    ramp.extend(_noise_ramp(m[mi], pinned, new, h.context_noise, dims[mi]))
         if slot is not None:
             li[0][:, :, slot:slot + 1] = slot_src.to(li[0].dtype)
             m[0][:, :, slot:slot + 1] = 0.0
+            ramp = [(i, v) for i, v in ramp if i != slot]     # the keystone slot stays locked and clean
         li_p, m_p = pack(li), pack(m)
         s0 = float(sig[0])
         noise_w = (pack(state) - (1.0 - s0) * li_p) / (s0 * nscale)
+        if ramp:
+            # the noised overlap latents need real noise, like any other noisy latent
+            nw = unpack(noise_w)
+            g = torch.Generator(device="cpu").manual_seed(int(extra_args.get("seed", 0) or 0) + 104729 * (wi + 1))
+            sl = _ix(dims[0], [i for i, _ in ramp])
+            nw[0][sl] = torch.randn(nw[0][sl].shape, generator=g).to(device=nw[0].device, dtype=nw[0].dtype)
+            noise_w = pack(nw)
+            if counter.get("noted") != wi:
+                counter["noted"] = wi
+                logging.info(f"[{WHO}] context noise on window {wi + 1}'s overlap: "
+                             + ", ".join(f"latent {i} {v:.2f}" for i, v in ramp))
         h.only_window, h.window_subset = wi, None
         h.mask_conds = model._denoise_mask_values(m_p, shapes) if multi else {}
         guess.pop("x0", None)
@@ -457,12 +500,23 @@ class H3ClownHybridWindows:
                 "sound_first": ("BOOLEAN", {"default": False,
                                             "tooltip": "Render the sound first on its own (blended windows, picture at "
                                                        "64x64), then lock it in and render the picture."}),
+                "context_noise": ("BOOLEAN", {"default": False,
+                                              "tooltip": "ethanfel's context noise: during each window's own steps, its "
+                                                         "pinned overlap gets part of the current noise instead of being "
+                                                         "locked fully clean, most at the start of the overlap and fading "
+                                                         "to none at the join, so H3 doesn't copy the overlap so exactly. "
+                                                         "The keystone slot stays clean, and the overlap the windows before "
+                                                         "made is kept as it was."}),
+                "context_noise_strength": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 1.0, "step": 0.05,
+                                                     "tooltip": "How much of the current noise the first overlap latent "
+                                                                "gets (1 = the same as the new latents). Fades to 0 at the join."}),
             },
         }
 
     def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=True,
               back_capstone=True, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
-              split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False, **_old):
+              split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False,
+              context_noise=False, context_noise_strength=0.8, **_old):
         if not _supported(model.model):
             raise RuntimeError(f"{WHO} needs a newer ComfyUI with MiniMax H3 context windows (PR #17425). Update ComfyUI.")
         length = _video_latent_t(context_length)
@@ -487,6 +541,7 @@ class H3ClownHybridWindows:
         handler.capstone_step = int(capstone_step)
         handler.switch_step = int(switch_step)
         handler.finished_handoff = bool(finished_handoff)
+        handler.context_noise = float(context_noise_strength) if context_noise else 0.0
         m = model.clone()
         m.model_options["context_handler"] = handler
         if handler.back_capstone:
@@ -499,7 +554,8 @@ class H3ClownHybridWindows:
         print(f"[{WHO}] window {length} latents, overlap {overlap}: steps 1-{switch_step} window by window, then blended"
               + (", finished handoff" if finished_handoff else "") + (", keystone" if keystone_swap else "")
               + (f", capstone from step {int(capstone_step) + 1}" if back_capstone else "")
-              + (", sound first" if sound_first else ""))
+              + (", sound first" if sound_first else "")
+              + (f", context noise {float(context_noise_strength):.2f}" if handler.context_noise > 0 else ""))
         return (m,)
 
 

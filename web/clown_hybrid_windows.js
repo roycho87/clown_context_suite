@@ -1,5 +1,5 @@
-// Clowntext Hybrid Windows: workflows saved with an older widget order get their values put back on the right
-// widgets. Now: ..., back_capstone, finished_handoff, capstone_step, ..., sound_first (last).
+// Geiru Hybrid Windows: workflows saved with an older widget order get their values put back on the right
+// widgets. Now: ..., back_capstone, finished_handoff, capstone_step, ..., sound_first, context_noise, context_noise_strength.
 //   old A: ..., back_capstone, capstone_step, fuse_method, freenoise, split_conds_to_windows, finished_handoff
 //   old B: ..., back_capstone, capstone_step, fuse_method, freenoise, split_conds_to_windows, finished_handoff, sound_first
 import { app } from "../../scripts/app.js";
