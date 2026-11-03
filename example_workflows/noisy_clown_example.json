@@ -2117,7 +2117,6 @@
           ]
         }
       ],
-      "title": "Geiru Context (39, drop last 17: holds the previous shot's frames + sound)",
       "properties": {
         "Node name for S&R": "H3ClownContextExperimental",
         "ue_properties": {
@@ -2272,7 +2271,6 @@
         }
       ],
       "outputs": [],
-      "title": "CLOWN CHAIN - Approve / Run / Chain / Reset",
       "properties": {
         "Node name for S&R": "H3ClownChain",
         "ue_properties": {
@@ -2339,7 +2337,6 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "title": "Geiru Keystone (keystone front + capstone back)",
       "inputs": [
         {
           "localized_name": "latent",
@@ -2433,7 +2430,6 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "title": "Geiru Late Lock (capstone free for steps 1-4, locked 5-8)",
       "inputs": [
         {
           "localized_name": "model",
@@ -2506,7 +2502,6 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "title": "Geiru Context Noise (ethanfel's idea: held frames get part of the noise, 0.8 fading to 0 at the join)",
       "inputs": [
         {
           "localized_name": "latent",
