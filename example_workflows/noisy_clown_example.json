@@ -1703,7 +1703,7 @@
         }
       },
       "widgets_values": [
-        "NOISY CLOWN EXAMPLE: the Mad Clown Inventor workflow with Geiru Context Noise added (ethanfel's / Lumifel's context noise). Context Noise sits between Geiru Context and Geiru Keystone, with the model plugged through it to Late Lock. Geiru Context's degradation_protection switch turns Keystone, Late Lock and Context Noise on or off together: on for long stretches of one scene, off around cuts.\n\nHOW TO USE (H3 Motion Context 0.6.2)\n\nUse the buttons on the CLOWN CHAIN node, not ComfyUI's Run:\n\u2022 Run / Re-roll: make the current clip again (change the seed for a new take)\n\u2022 Approve: keep this clip and make the next one\n\u2022 Chain: keep approving automatically (segments = how many clips, 0 = until Stop)\n\u2022 Reset: back to the start (Load 0 / Save 1)\n\u2022 Clear latents: delete the saved clips in the folder\n\nFirst clip: Load 0 / Save 1 (nothing is loaded, it starts fresh).\nThen Load 1 / Save 2, and so on. The buttons step these for you.\n\nLoad, Save and Clown Chain must stay inside the \"Context + Load/Save + Chain\" group or the buttons do nothing.\n\nEach clip is saved whole to output/h3_ref2va/. Late Lock puts each clip's real frame 0 back after sampling and the capstone is never in the clip, so join them the normal way: cut the last 39 frames of every clip but the last (Seamless Video Combiner's End pair: End Overlap 39, End Join 0).\n\nCLOWN KEYSTONE locks clip 1's first frame (keystone) into the start of every shot and sets up clip 1's capstone (its last single-frame latent) for the back. source_clip on Keystone picks which clip they come from (1 by default); set the clip 1 Load Latent to the same number. CLOWN LATE LOCK tacks the capstone onto the back of the shot from step 5 on (steps 1-4 render without it, so the shot picks its own pose) and cuts it off again, so nothing in the shot is replaced. Both skip the first shot.\n\nLength must be 17k+5 frames (192 = 8 s, 243 = 10 s, 362 = 15 s).\nSet resolution and length on the PROMPT node (480x864 = 9:16 at 0.5 MP).\n\nRefer to pictures in the prompt as <Picture 1>, <Picture 2>... in the order they plug into ref_image_0, ref_image_1..."
+        "NOISY CLOWN EXAMPLE: the Mad Clown Inventor workflow with Geiru Context Noise added (ethanfel's / Lumifel's context noise). Context Noise sits between Geiru Context and Geiru Keystone, with the model plugged through it to Late Lock. Geiru Context's degradation_protection switch turns Keystone, Late Lock and Context Noise on or off together: on for long stretches of one scene, off around cuts.\n\nHOW TO USE (H3 Motion Context 0.6.2)\n\nUse the buttons on the GEIRU CHAIN node, not ComfyUI's Run:\n\u2022 Run / Re-roll: make the current clip again (change the seed for a new take)\n\u2022 Approve: keep this clip and make the next one\n\u2022 Chain: keep approving automatically (segments = how many clips, 0 = until Stop)\n\u2022 Reset: back to the start (Load 0 / Save 1)\n\u2022 Clear latents: delete the saved clips in the folder\n\nFirst clip: Load 0 / Save 1 (nothing is loaded, it starts fresh).\nThen Load 1 / Save 2, and so on. The buttons step these for you.\n\nLoad, Save and Geiru Chain must stay inside the \"Context + Load/Save + Chain\" group or the buttons do nothing.\n\nEach clip is saved whole to output/h3_ref2va/. Late Lock puts each clip's real frame 0 back after sampling and the capstone is never in the clip, so join them the normal way: cut the last 39 frames of every clip but the last (Seamless Video Combiner's End pair: End Overlap 39, End Join 0).\n\nGEIRU KEYSTONE locks clip 1's first frame (keystone) into the start of every shot and sets up clip 1's capstone (its last single-frame latent) for the back. source_clip on Keystone picks which clip they come from (1 by default), and Keystone loads that clip itself from latent_folder (h3_ref2va, the folder this chain saves to). To switch the source when the scene changes, just change source_clip. GEIRU LATE LOCK tacks the capstone onto the back of the shot from step 5 on (steps 1-4 render without it, so the shot picks its own pose) and cuts it off again, so nothing in the shot is replaced. Both skip the first shot.\n\nLength must be 17k+5 frames (192 = 8 s, 243 = 10 s, 362 = 15 s).\nSet resolution and length on the PROMPT node (480x864 = 9:16 at 0.5 MP).\n\nRefer to pictures in the prompt as <Picture 1>, <Picture 2>... in the order they plug into ref_image_0, ref_image_1..."
       ],
       "widgets_values_named": {
         "text": "HOW TO USE (H3 Motion Context 0.6.2)\n\nUse the buttons on the CLOWN CHAIN node, not ComfyUI's Run:\n\u2022 Run / Re-roll: make the current clip again (change the seed for a new take)\n\u2022 Approve: keep this clip and make the next one\n\u2022 Chain: keep approving automatically (segments = how many clips, 0 = until Stop)\n\u2022 Reset: back to the start (Load 0 / Save 1)\n\u2022 Clear latents: delete the saved clips in the folder\n\nFirst clip: Load 0 / Save 1 (nothing is loaded, it starts fresh).\nThen Load 1 / Save 2, and so on. The buttons step these for you.\n\nLoad, Save and Clown Chain must stay inside the blue group or the buttons do nothing.\n\nEach clip is saved to output/h3_ref2va/ already trimmed, so you can drop them on a timeline back to back.\n\nLength must be 17k+5 frames (192 = 8 s, 243 = 10 s, 362 = 15 s).\nSet resolution and length on the PROMPT node (480x864 = 9:16 at 0.5 MP).\n\nRefer to pictures in the prompt as <Picture 1>, <Picture 2>... in the order they plug into ref_image_0, ref_image_1..."
@@ -2117,7 +2117,7 @@
           ]
         }
       ],
-      "title": "Clown Context (39, drop last 17: holds the previous shot's frames + sound)",
+      "title": "Geiru Context (39, drop last 17: holds the previous shot's frames + sound)",
       "properties": {
         "Node name for S&R": "H3ClownContextExperimental",
         "ue_properties": {
@@ -2317,7 +2317,7 @@
         }
       },
       "widgets_values": [
-        "WHERE TO GET THE NODES IN THIS WORKFLOW\n\nClown nodes, Clown Keystone, Clown Late Lock + Clown Chain (Clown Context Suite):\nhttps://github.com/roycho87/geiru_context_suite\n\nLoad / Save Latent - install ONE of these, not both (they use the same node names):\n  H3 Motion Context: https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context\n  H3 Motion Context MultiRef: https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef\n\nH3 Prompt IDE:\nhttps://github.com/ethanfel/ComfyUI-H3-Prompt-IDE\n\nKJNodes (MiniMax low-VRAM / Sage attention nodes):\nhttps://github.com/kijai/ComfyUI-KJNodes\n\nVideoHelperSuite (Video Combine):\nhttps://github.com/Kosinkadink/ComfyUI-VideoHelperSuite\n\nEverything else is built into ComfyUI. Update ComfyUI if the MiniMax H3 nodes are missing."
+        "WHERE TO GET THE NODES IN THIS WORKFLOW\n\nClown nodes, Geiru Keystone, Geiru Late Lock + Geiru Chain (Geiru Context Suite):\nhttps://github.com/roycho87/geiru_context_suite\n\nLoad / Save Latent - install ONE of these, not both (they use the same node names):\n  H3 Motion Context: https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context\n  H3 Motion Context MultiRef: https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef\n\nH3 Prompt IDE:\nhttps://github.com/ethanfel/ComfyUI-H3-Prompt-IDE\n\nKJNodes (MiniMax low-VRAM / Sage attention nodes):\nhttps://github.com/kijai/ComfyUI-KJNodes\n\nVideoHelperSuite (Video Combine):\nhttps://github.com/Kosinkadink/ComfyUI-VideoHelperSuite\n\nEverything else is built into ComfyUI. Update ComfyUI if the MiniMax H3 nodes are missing."
       ],
       "widgets_values_named": {
         "text": "WHERE TO GET THE NODES IN THIS WORKFLOW\n\nClown nodes + Clown Chain (Clown Context Suite):\nhttps://github.com/roycho87/geiru_context_suite\n\nLoad / Save Latent - install ONE of these, not both (they use the same node names):\n  H3 Motion Context: https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context\n  H3 Motion Context MultiRef: https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef\n\nH3 Prompt IDE:\nhttps://github.com/ethanfel/ComfyUI-H3-Prompt-IDE\n\nKJNodes (MiniMax low-VRAM / Sage attention nodes):\nhttps://github.com/kijai/ComfyUI-KJNodes\n\nVideoHelperSuite (Video Combine):\nhttps://github.com/Kosinkadink/ComfyUI-VideoHelperSuite\n\nComfyUI-Custom-Scripts (Show Text):\nhttps://github.com/pythongosssss/ComfyUI-Custom-Scripts\n\nEverything else is built into ComfyUI. Update ComfyUI if the MiniMax H3 nodes are missing."
@@ -2334,12 +2334,12 @@
       ],
       "size": [
         511,
-        170
+        196
       ],
       "flags": {},
       "order": 0,
       "mode": 0,
-      "title": "Clown Keystone (keystone front + capstone back)",
+      "title": "Geiru Keystone (keystone front + capstone back)",
       "inputs": [
         {
           "localized_name": "latent",
@@ -2351,9 +2351,9 @@
           "localized_name": "keyframe",
           "name": "keyframe",
           "type": "LATENT",
-          "link": 78,
+          "link": null,
           "shape": 7,
-          "label": "clip 1 (keystone / capstone)"
+          "label": "source clip (optional when latent_folder is set)"
         },
         {
           "localized_name": "shot_number",
@@ -2388,6 +2388,15 @@
             "name": "source_clip"
           },
           "link": null
+        },
+        {
+          "localized_name": "latent_folder",
+          "name": "latent_folder",
+          "type": "STRING",
+          "widget": {
+            "name": "latent_folder"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -2406,7 +2415,8 @@
       "widgets_values": [
         true,
         "keystone front + capstone back",
-        1
+        1,
+        "h3_ref2va"
       ]
     },
     {
@@ -2423,7 +2433,7 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "title": "Clown Late Lock (capstone free for steps 1-4, locked 5-8)",
+      "title": "Geiru Late Lock (capstone free for steps 1-4, locked 5-8)",
       "inputs": [
         {
           "localized_name": "model",
@@ -2481,69 +2491,6 @@
         4,
         "capstone slot (back)"
       ]
-    },
-    {
-      "id": 3022,
-      "type": "MiniMaxH3MotionContextLoadLatent",
-      "pos": [
-        1500,
-        -1000
-      ],
-      "size": [
-        320,
-        90
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "latent_path",
-          "name": "latent_path",
-          "type": "STRING",
-          "widget": {
-            "name": "latent_path"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "clip_index",
-          "name": "clip_index",
-          "type": "INT",
-          "widget": {
-            "name": "clip_index"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "LATENT",
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            78
-          ]
-        }
-      ],
-      "title": "Load clip 1 (keystone source, stays on clip 1)",
-      "properties": {
-        "cnr_id": "comfyui-h3-motion-context",
-        "ver": "5335715abe54c1a9bfbe3494da29aae3e8635ce3",
-        "Node name for S&R": "MiniMaxH3MotionContextLoadLatent",
-        "aux_id": "NikoDemon80/ComfyUI-H3-Motion-Context",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "h3_ref2va",
-        1
-      ],
-      "color": "#1f1f48",
-      "bgcolor": "rgba(24,24,27,.9)"
     },
     {
       "id": 3023,
@@ -2892,14 +2839,6 @@
       "LATENT"
     ],
     [
-      78,
-      3022,
-      0,
-      3020,
-      1,
-      "LATENT"
-    ],
-    [
       79,
       3010,
       0,
@@ -3057,7 +2996,7 @@
     },
     {
       "id": 8,
-      "title": "Clown Keystone + Late Lock (clip 1 loader stays outside the Chain group)",
+      "title": "Geiru Keystone + Late Lock (Keystone loads source_clip from latent_folder)",
       "bounding": [
         1480,
         -1076,
@@ -3070,7 +3009,7 @@
     },
     {
       "id": 9,
-      "title": "Geiru Context Noise (between Context and Keystone, model plugged through)",
+      "title": "Geiru Keystone + Late Lock (Keystone loads source_clip from latent_folder)",
       "bounding": [
         1480,
         -1400,

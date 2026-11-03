@@ -238,11 +238,12 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 
 ### Mad Clown Inventor example
 
-`example_workflows/mad_clown_inventor_example.json` is a Geiru Chain workflow with **Geiru Keystone** + **Geiru Late Lock**: Geiru Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back`, and Late Lock on the capstone at step 4.
+`example_workflows/mad_clown_inventor_example.json` is a Geiru Chain workflow with **Geiru Keystone** + **Geiru Late Lock**: Geiru Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back` with `latent_folder` set to the chain's folder, and Late Lock on the capstone at step 4.
 
 1. Load your reference pictures and write the prompt in the **H3 Prompt IDE** node.
 2. Press **Chain** (or **Run/Re-roll** for one shot). Don't use ComfyUI's Run button.
-3. Keep Load Latent, Save Latent and Geiru Chain inside their group, and the clip 1 Load Latent outside it.
+3. Keep Load Latent, Save Latent and Geiru Chain inside their group.
+4. Keystone loads its source clip itself from `latent_folder` (`h3_ref2va`, the folder the chain saves to). When the scene changes, just change `source_clip`. If your Save Latent uses a different folder, put that folder in `latent_folder`.
 
 Late Lock does the restore, so join the clips the normal way (see [Joining the clips](#joining-the-clips)).
 
