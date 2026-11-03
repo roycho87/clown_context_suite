@@ -2991,7 +2991,7 @@
     },
     {
       "id": 8,
-      "title": "Geiru Keystone + Late Lock (Keystone loads source_clip from latent_folder)",
+      "title": "Geiru Keystone + Late Lock",
       "bounding": [
         1480,
         -1076,
@@ -3004,7 +3004,7 @@
     },
     {
       "id": 9,
-      "title": "Geiru Keystone + Late Lock (Keystone loads source_clip from latent_folder)",
+      "title": "Geiru Keystone + Late Lock",
       "bounding": [
         1480,
         -1400,
