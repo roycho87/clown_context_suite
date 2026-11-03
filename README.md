@@ -12,7 +12,7 @@ The Geiru Context Suite stands on other people's work. I'm building off it, so a
 - **NikoDemon80**: [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context), the Chain node (copied in as Geiru Chain), and months of drift measurements that shaped how this was tested.
 - **ethanfel (Lumifel)**: the context noise idea behind **Geiru Context Noise** (see [ComfyUI-MiniMaxH3-Context-Loop](https://github.com/ethanfel/ComfyUI-MiniMaxH3-Context-Loop)), and [ComfyUI-H3-Prompt-IDE](https://github.com/ethanfel/ComfyUI-H3-Prompt-IDE).
 - **drozbay**: native H3 latent-mask support and the masked-extension method everything here relies on.
-- **kijai**: ComfyUI's MiniMax H3 support and context windows (used by Geiru Hybrid Windows).
+- **kijai** ([GitHub](https://github.com/kijai)): ComfyUI's MiniMax H3 support and the H3 context windows ([PR #17425](https://github.com/Comfy-Org/ComfyUI/pull/17425)) that Geiru Hybrid Windows is built on, plus [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes).
 - **JalenBrunson**: [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows), which Geiru Hybrid Windows works like.
 - **TrentHunter82**: [TrentNodes](https://github.com/TrentHunter82/TrentNodes). Its degrade node made the bad frame 0 tests possible, which showed how much a clean frame 0 matters (the idea behind Geiru Keystone).
 - Everyone on the Banodoco Discord and r/StableDiffusion who tested, argued and shared results.
