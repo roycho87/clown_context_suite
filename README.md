@@ -31,7 +31,7 @@ When you chain H3 clips, each new clip starts from the tail of the last one. You
 
 Pull every shot back to clip 1. **Geiru Context** pins the previous shot's tail to the front of each shot, so the motion carries over. **Geiru Keystone** locks clip 1's first frame into the start of every shot and tacks clip 1's capstone onto the back, and **Geiru Late Lock** brings the capstone in only for the last steps, so the shot picks its own pose first. Every shot is pulled back toward how clip 1 looked, so the loss can't stack up, and with Geiru Context in front of Keystone the real frames are put back afterwards, so nothing from clip 1 ends up in the clips.
 
-It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/mad_clown_inventor_example.json`. See [Geiru Keystone and Geiru Late Lock](#geiru-keystone-and-geiru-late-lock).
+It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/mad_clown_inventor_example.json`, or `example_workflows/noisy_clown_example.json` for the same with Geiru Context Noise added. See [Geiru Keystone and Geiru Late Lock](#geiru-keystone-and-geiru-late-lock).
 
 ## Degradation protection (one switch)
 
@@ -246,6 +246,10 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 3. Keep Load Latent, Save Latent and Geiru Chain inside their group, and the clip 1 Load Latent outside it.
 
 Late Lock does the restore, so join the clips the normal way (see [Joining the clips](#joining-the-clips)).
+
+### Noisy Clown example
+
+`example_workflows/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added (ethanfel's context noise), so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8, the strength all of our tests used. Use it the same way as the Mad Clown Inventor example, and flip Geiru Context's `degradation_protection` off around cuts and scene changes.
 
 ### Clown Coaster example
 
