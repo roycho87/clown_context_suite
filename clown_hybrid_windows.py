@@ -507,7 +507,7 @@ class H3ClownHybridWindows:
                                                          "to none at the join, so H3 doesn't copy the overlap so exactly. "
                                                          "The keystone slot stays clean, and the overlap the windows before "
                                                          "made is kept as it was."}),
-                "context_noise_strength": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 1.0, "step": 0.05,
+                "context_noise_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
                                                      "tooltip": "How much of the current noise the first overlap latent "
                                                                 "gets (1 = the same as the new latents). Fades to 0 at the join."}),
             },
@@ -516,7 +516,7 @@ class H3ClownHybridWindows:
     def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=True,
               back_capstone=True, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
               split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False,
-              context_noise=False, context_noise_strength=0.8, **_old):
+              context_noise=False, context_noise_strength=1.0, **_old):
         if not _supported(model.model):
             raise RuntimeError(f"{WHO} needs a newer ComfyUI with MiniMax H3 context windows (PR #17425). Update ComfyUI.")
         length = _video_latent_t(context_length)

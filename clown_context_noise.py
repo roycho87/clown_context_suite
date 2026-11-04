@@ -78,7 +78,7 @@ class H3ClownContextNoise:
             "required": {
                 "latent": ("LATENT", {"tooltip": "From Geiru Context."}),
                 "enabled": ("BOOLEAN", {"default": True}),
-                "strength": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 1.0, "step": 0.05,
+                "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
                                        "tooltip": "How much of the current noise the first held latent gets (1 = the "
                                                   "same noise level as the new frames). Fades to 0 at the join."}),
                 "fade": (["linear", "ease"], {"default": "linear"}),
@@ -90,7 +90,7 @@ class H3ClownContextNoise:
             },
         }
 
-    def noise(self, latent, enabled=True, strength=0.8, fade="linear", skip_first=True, model=None):
+    def noise(self, latent, enabled=True, strength=1.0, fade="linear", skip_first=True, model=None):
         if not bool(enabled) or float(strength) <= 0:
             print(f"[{WHO}] off - latent passed through")
             return (latent, model)

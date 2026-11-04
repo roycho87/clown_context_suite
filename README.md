@@ -252,7 +252,7 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 | `split_conds_to_windows` | Give each window its own prompt (see below). |
 | `detail_latent` | Optional: use this latent's first frame as the keystone instead of window 1's. |
 | `context_noise` | ethanfel's context noise, only while an overlap is locked in: during each window's own steps (1 to `switch_step`), its locked overlap gets part of the current noise instead of being fully clean, most at the start of the overlap and fading to none at the join. The keystone slot stays clean, the blended steps aren't touched, and the overlap the window before made is kept as it was. Off by default. |
-| `context_noise_strength` | How much noise the first overlap latent gets (0.8 default, 1 = as much as the new latents). |
+| `context_noise_strength` | How much noise the first overlap latent gets (1 default = as much as the new latents). |
 | `sound_first` | Off by default. On: renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
 
 **One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.
@@ -272,7 +272,7 @@ Late Lock does the restore, so join the clips the normal way (see [Joining the c
 
 ### Noisy Clown example
 
-`example_workflows/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added (ethanfel's context noise), so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8, the strength all of our tests used. Use it the same way as the Mad Clown Inventor example, and flip Geiru Context's `degradation_protection` off around cuts and scene changes.
+`example_workflows/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added (ethanfel's context noise), so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8 in this workflow; the node now defaults to 1, which tested best in the [fade and strength sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md) (set it to 1 here too if you like). Use it the same way as the Mad Clown Inventor example, and flip Geiru Context's `degradation_protection` off around cuts and scene changes.
 
 ### Clown Coaster example
 
