@@ -278,6 +278,10 @@ Late Lock does the restore, so join the clips the normal way (see [Joining the c
 
 `example_workflows/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added (ethanfel's context noise), so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8 in this workflow; the node now defaults to 1, which tested best in the [fade and strength sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md) (set it to 1 here too if you like). Use it the same way as the Mad Clown Inventor example, and flip Geiru Context's `degradation_protection` off around cuts and scene changes.
 
+### Clown in Imagination Land example
+
+`example_workflows/clown_in_imagination_land_example.json` is the Noisy Clown example with **Geiru Protection LoRA** added: the full degradation protection set plus **Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) at 0.6, with Context Noise at 1. Geiru Protection LoRA sits between Geiru Context and Geiru Context Noise. It only loads the LoRA while `degradation_protection` is on, and never on the first shot. If you don't have the LoRA yet, it downloads it into `loras/antiburn` the first time it's needed. Use it the same way as the Noisy Clown example.
+
 ### Clown Coaster example
 
 `example_workflows/clown_coaster_example.json` is a 60-second **Geiru Hybrid Windows** render in one go: a first-person space roller coaster where only the rider's gloved hands are seen. A rocket launch throws her onto the track, then a loop-de-loop, ghost space stingrays, down to Mars, she hits a HYPERDRIVE button, a ride over the Sun, and around a black hole.
