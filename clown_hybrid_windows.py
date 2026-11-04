@@ -72,6 +72,7 @@ class ClownContextHandler(cw.IndexListContextHandler):
         self.window_subset = None
         self.mask_conds = None               # model mask conds for the single-window pass
         self.context_noise = 0.0             # ethanfel's context noise on the pinned overlap (0 = off)
+        self.context_noise_fade = "linear"   # linear / ease / ethanfel
 
     def _with_masks(self, cond_list):
         if cond_list is None or self.mask_conds is None:
@@ -118,7 +119,41 @@ class ClownContextHandler(cw.IndexListContextHandler):
         return out
 
 
-def _noise_ramp(mask, pinned, new, strength, dim):
+FADES = ["linear", "ease", "ethanfel"]
+
+
+def _fade_weight(j, n, fade):
+    """Weight of the j-th of n pinned overlap latents (0 = start of the overlap, n-1 = next to the join)."""
+    if n <= 1:
+        return 0.0
+    if fade == "ethanfel":                           # ethanfel's drift_control: full, then .75/.5/.25/0 over the last 4
+        k = n - 1 - j
+        return 1.0 if k >= 4 else k / 4.0
+    pos = j / (n - 1)
+    return (1.0 - pos) if fade != "ease" else (1.0 - pos) ** 2
+
+
+def _ratio_fn(prev, ramp, dim, unpack, pack, shape):
+    """ethanfel's matched_noise_ratio: at every step the noised overlap values are scaled by next sigma / current sigma."""
+    def fn(sigma, mask, extra_options):
+        if prev is not None:
+            mask = prev(sigma, mask, extra_options)
+        sigmas = extra_options.get("sigmas")
+        if sigmas is None or tuple(mask.shape) != tuple(shape):
+            return mask
+        sg = sigmas.float().cpu()
+        sv = float(torch.as_tensor(sigma).flatten()[0])
+        i = int(torch.argmin((sg - sv).abs()))
+        nxt = float(sg[i + 1]) if i + 1 < len(sg) else 0.0
+        r = max(0.0, min(1.0, nxt / sv)) if sv > 0 else 0.0
+        parts = unpack(mask)
+        for t, v in ramp:
+            parts[0][_ix(dim, [t])] = v * r
+        return pack(parts)
+    return fn
+
+
+def _noise_ramp(mask, pinned, new, strength, dim, fade="linear"):
     """ethanfel's (Lumifel's) context noise on a window's pinned overlap: instead of locking the overlap fully clean, give
     it part of the current noise, most at the start of the overlap and fading to none at the join with the new latents.
     The sampler and the model both read the partial mask (a value m = m x the current noise level). Window positions
@@ -133,7 +168,7 @@ def _noise_ramp(mask, pinned, new, strength, dim):
     out = []
     n = len(before)
     for j, i in enumerate(before):
-        w = 1.0 - j / max(1, n - 1) if n > 1 else 0.0  # 1 at the start of the overlap, 0 at the join
+        w = _fade_weight(j, n, fade)                    # 1 at the start of the overlap, 0 at the join
         v = float(strength) * w
         if v <= 0:
             continue
@@ -250,7 +285,7 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
                 sl = _ix(dims[mi], pinned)
                 li[mi][sl] = pins[mi][sl]
                 if mi == 0 and h.context_noise > 0:
-                    ramp.extend(_noise_ramp(m[mi], pinned, new, h.context_noise, dims[mi]))
+                    ramp.extend(_noise_ramp(m[mi], pinned, new, h.context_noise, dims[mi], h.context_noise_fade))
         if slot is not None:
             li[0][:, :, slot:slot + 1] = slot_src.to(li[0].dtype)
             m[0][:, :, slot:slot + 1] = 0.0
@@ -272,8 +307,15 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
         h.only_window, h.window_subset = wi, None
         h.mask_conds = model._denoise_mask_values(m_p, shapes) if multi else {}
         guess.pop("x0", None)
+        args = _pass_args(extra_args, counter["pass"])
+        if ramp and h.context_noise_fade == "ethanfel":
+            args = dict(args)
+            mo2 = dict(args["model_options"])
+            mo2["denoise_mask_function"] = _ratio_fn(mo2.get("denoise_mask_function"), ramp, dims[0], unpack, pack,
+                                                     m_p.shape)
+            args["model_options"] = mo2
         try:
-            out = executor(guider, sig, _pass_args(extra_args, counter["pass"]), progress(), noise_w, li_p, m_p,
+            out = executor(guider, sig, args, progress(), noise_w, li_p, m_p,
                            disable_pbar)
         finally:
             h.only_window, h.window_subset, h.mask_conds = None, None, None
@@ -510,13 +552,19 @@ class H3ClownHybridWindows:
                 "context_noise_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
                                                      "tooltip": "How much of the current noise the first overlap latent "
                                                                 "gets (1 = the same as the new latents). Fades to 0 at the join."}),
+                "context_noise_fade": (FADES, {"default": "linear",
+                                               "tooltip": "How the context noise fades to clean at the join. linear = an "
+                                                          "even fade (best in testing). ease = drops off faster near the "
+                                                          "start. ethanfel = his drift_control recipe: full on the overlap, "
+                                                          "a 4-latent taper to clean at the join, times next/current noise "
+                                                          "level at every step."}),
             },
         }
 
     def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=True,
               back_capstone=True, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
               split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False,
-              context_noise=False, context_noise_strength=1.0, **_old):
+              context_noise=False, context_noise_strength=1.0, context_noise_fade="linear", **_old):
         if not _supported(model.model):
             raise RuntimeError(f"{WHO} needs a newer ComfyUI with MiniMax H3 context windows (PR #17425). Update ComfyUI.")
         length = _video_latent_t(context_length)
@@ -542,6 +590,7 @@ class H3ClownHybridWindows:
         handler.switch_step = int(switch_step)
         handler.finished_handoff = bool(finished_handoff)
         handler.context_noise = float(context_noise_strength) if context_noise else 0.0
+        handler.context_noise_fade = context_noise_fade if context_noise_fade in FADES else "linear"
         m = model.clone()
         m.model_options["context_handler"] = handler
         if handler.back_capstone:
@@ -555,7 +604,8 @@ class H3ClownHybridWindows:
               + (", finished handoff" if finished_handoff else "") + (", keystone" if keystone_swap else "")
               + (f", capstone from step {int(capstone_step) + 1}" if back_capstone else "")
               + (", sound first" if sound_first else "")
-              + (f", context noise {float(context_noise_strength):.2f}" if handler.context_noise > 0 else ""))
+              + (f", context noise {float(context_noise_strength):.2f} {handler.context_noise_fade}"
+                 if handler.context_noise > 0 else ""))
         return (m,)
 
 
