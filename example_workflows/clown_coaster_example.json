@@ -1,8 +1,8 @@
 {
  "id": "a10fe8d2-54cd-4611-8f5d-bcb8bbe136b3",
  "revision": 0,
- "last_node_id": 3062,
- "last_link_id": 175,
+ "last_node_id": 3063,
+ "last_link_id": 176,
  "nodes": [
   {
    "id": 401,
@@ -1393,7 +1393,8 @@
      "type": "LATENT",
      "links": [
       29,
-      31
+      31,
+      176
      ]
     },
     {
@@ -1730,7 +1731,7 @@
     "HOW TO USE\n\nSpace roller coaster: rocket launch ejects her onto the track, loop-de-loop, turns, ghost space stingrays she reaches out to, down to Mars, she hits the HYPERDRIVE button, ride over the Sun, then around a black hole. 1433 frames = 60 s, 8 windows of 226 frames. Press Run.\n\n8 PROMPT nodes (bottom), one per window, joined in order by the Conditioning Combine chain into the guider. split_conds_to_windows is ON, so window 1 gets prompt 1, window 2 prompt 2, and so on. Edit a window's prompt on its PROMPT node.\n\nClowntext Hybrid Windows: keystone ON, capstone ON (capstone_step 4), finished_handoff ON, freenoise OFF (more variety).\n\nLength and size are on PROMPT 1 (its LATENT is the one used). If you change the length, the window count changes and the prompts won't line up 1:1 any more.\n\nThe H3 Prompt IDE is unplugged.\n\nLoad your own subject picture in Picture 1 (only her gloved hands are seen). Picture 2 is not used."
    ],
    "widgets_values_named": {
-    "text": "HOW TO USE (H3 Motion Context 0.6.2)\n\nUse the buttons on the CLOWN CHAIN node, not ComfyUI's Run:\n\u2022 Run / Re-roll: make the current clip again (change the seed for a new take)\n\u2022 Approve: keep this clip and make the next one\n\u2022 Chain: keep approving automatically (segments = how many clips, 0 = until Stop)\n\u2022 Reset: back to the start (Load 0 / Save 1)\n\u2022 Clear latents: delete the saved clips in the folder\n\nFirst clip: Load 0 / Save 1 (nothing is loaded, it starts fresh).\nThen Load 1 / Save 2, and so on. The buttons step these for you.\n\nLoad, Save and Clown Chain must stay inside the blue group or the buttons do nothing.\n\nEach clip is saved to output/h3_ref2va/ already trimmed, so you can drop them on a timeline back to back.\n\nLength must be 17k+5 frames (192 = 8 s, 243 = 10 s, 362 = 15 s).\nSet resolution and length on the PROMPT node (480x864 = 9:16 at 0.5 MP).\n\nRefer to pictures in the prompt as <Picture 1>, <Picture 2>... in the order they plug into ref_image_0, ref_image_1..."
+    "text": "HOW TO USE (H3 Motion Context 0.6.2)\n\nUse the buttons on the CLOWN CHAIN node, not ComfyUI's Run:\n• Run / Re-roll: make the current clip again (change the seed for a new take)\n• Approve: keep this clip and make the next one\n• Chain: keep approving automatically (segments = how many clips, 0 = until Stop)\n• Reset: back to the start (Load 0 / Save 1)\n• Clear latents: delete the saved clips in the folder\n\nFirst clip: Load 0 / Save 1 (nothing is loaded, it starts fresh).\nThen Load 1 / Save 2, and so on. The buttons step these for you.\n\nLoad, Save and Clown Chain must stay inside the blue group or the buttons do nothing.\n\nEach clip is saved to output/h3_ref2va/ already trimmed, so you can drop them on a timeline back to back.\n\nLength must be 17k+5 frames (192 = 8 s, 243 = 10 s, 362 = 15 s).\nSet resolution and length on the PROMPT node (480x864 = 9:16 at 0.5 MP).\n\nRefer to pictures in the prompt as <Picture 1>, <Picture 2>... in the order they plug into ref_image_0, ref_image_1..."
    },
    "color": "#432",
    "bgcolor": "#653"
@@ -4194,6 +4195,36 @@
     "Node name for S&R": "ConditioningCombine"
    },
    "widgets_values": []
+  },
+  {
+   "id": 3063,
+   "type": "SaveLatent",
+   "pos": [
+    4060,
+    290
+   ],
+   "size": [
+    315,
+    58
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "title": "SAVE LATENT (hybrid windows)",
+   "inputs": [
+    {
+     "name": "samples",
+     "type": "LATENT",
+     "link": 176
+    }
+   ],
+   "outputs": [],
+   "properties": {
+    "Node name for S&R": "SaveLatent"
+   },
+   "widgets_values": [
+    "latents/geiru_hybrid/clown_coaster"
+   ]
   }
  ],
  "links": [
@@ -4748,6 +4779,14 @@
    121,
    1,
    "CONDITIONING"
+  ],
+  [
+   176,
+   124,
+   0,
+   3063,
+   0,
+   "LATENT"
   ]
  ],
  "groups": [
@@ -4822,7 +4861,7 @@
     4042,
     -76,
     896,
-    428
+    444
    ],
    "color": "#3f789e",
    "font_size": 24,
