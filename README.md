@@ -218,6 +218,8 @@ Restore and the back both need the model, so plug the model through Keystone (mo
 
 A capstone locked from the start pulls the pose back toward clip 1. Late Lock avoids that.
 
+**Setting `swap_step`:** Late Lock defaults to 4. It's recommended to set it to the last 25% of your steps (for example 6 on an 8-step run). The best point depends on your scheduler and sampler, since it's really the noise level that decides when Late Lock works best. Raise it if it starts to affect motion; lower it if colour or detail starts to go.
+
 Comparison, clip 10 of the same 10-clip chain: no Keystone (base), keystone front, and keystone front + Late Lock capstone.
 
 https://github.com/user-attachments/assets/3002019d-7d6d-4afc-9592-09a3c201fb78
