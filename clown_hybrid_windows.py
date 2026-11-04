@@ -23,6 +23,7 @@ being worked on frozen, so memory use stays at one window.
 """
 import copy
 import logging
+import os
 
 import torch
 
@@ -37,6 +38,66 @@ from .nodes import _split
 
 CATEGORY = "Geiru Context Suite"
 WHO = "Geiru Hybrid Windows"
+PROGRESS_DIR = "geiru_hybrid_progress"     # in ComfyUI's output folder
+PROGRESS_FILE = "last_run.pt"
+
+
+def _free_vram():
+    try:
+        import comfy.model_management as mm
+        mm.soft_empty_cache()
+    except Exception:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+
+def _progress_path():
+    try:
+        import folder_paths
+        base = folder_paths.get_output_directory()
+    except Exception:
+        base = "output"
+    d = os.path.join(base, PROGRESS_DIR)
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, PROGRESS_FILE)
+
+
+def _run_id(extra_args, shapes, sigmas, windows, k, h):
+    """What a saved run must match to be resumed: seed, latent size, schedule, windows and the main settings."""
+    return {"seed": int(extra_args.get("seed", 0) or 0), "shapes": [list(map(int, sh)) for sh in shapes],
+            "sigmas": [round(float(x), 5) for x in sigmas], "windows": [list(map(int, w)) for w in windows],
+            "k": int(k), "keystone": bool(h.detail_swap), "capstone": bool(h.back_capstone),
+            "handoff": bool(getattr(h, "finished_handoff", False)), "noise": float(h.context_noise),
+            "fade": str(h.context_noise_fade)}
+
+
+def _cpu(t):
+    return None if t is None else t.detach().to("cpu")
+
+
+def _save_progress(run_id, **data):
+    path = _progress_path()
+    tmp = path + ".tmp"
+    torch.save({"run_id": run_id, **data}, tmp)
+    os.replace(tmp, path)
+    return path
+
+
+def _load_progress(run_id):
+    path = _progress_path()
+    if not os.path.isfile(path):
+        logging.warning(f"[{WHO}] resume is on but there's no saved progress ({path}) - starting from the beginning")
+        return None
+    try:
+        data = torch.load(path, map_location="cpu", weights_only=False)
+    except Exception as e:
+        logging.warning(f"[{WHO}] couldn't read the saved progress ({e}) - starting from the beginning")
+        return None
+    if data.get("run_id") != run_id:
+        logging.warning(f"[{WHO}] the saved progress is from a different run (seed, size, steps, windows or settings "
+                        f"changed) - starting from the beginning")
+        return None
+    return data
 HYBRID = "hybrid"
 
 
@@ -68,6 +129,8 @@ class ClownContextHandler(cw.IndexListContextHandler):
         self.detail_latent = detail_latent   # optional [B, C, 1, H, W] (real latent space)
         self.switch_step = 6
         self.finished_handoff = False
+        self.save_progress = True            # save after every window (and the finished latent) to output/geiru_hybrid_progress
+        self.resume = False                  # pick up from the saved progress of the same run
         self.only_window = None              # None = normal blended windows, int = run only this window
         self.window_subset = None
         self.mask_conds = None               # model mask conds for the single-window pass
@@ -335,8 +398,40 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
                 done[mi].update(new)
 
     key_src = cap_src = None
+    run_id = _run_id(extra_args, shapes, sigmas, windows, k, h)
+    start = 0
+    if h.resume:
+        saved = _load_progress(run_id)
+        if saved is not None:
+            dev = st[0].device
+            if saved.get("finished") is not None:
+                logging.info(f"[{WHO}] resume: this run already finished - returning the saved latent")
+                return saved["finished"].to(device=dev, dtype=latent_image.dtype)
+            st = [t.to(device=dev, dtype=p.dtype) for t, p in zip(saved["st"], st)]
+            pins = [t.to(device=dev, dtype=p.dtype) for t, p in zip(saved["pins"], pins)]
+            done = [set(d) for d in saved["done"]]
+            key_src = None if saved["key_src"] is None else saved["key_src"].to(device=dev, dtype=st[0].dtype)
+            cap_src = None if saved["cap_src"] is None else saved["cap_src"].to(device=dev, dtype=st[0].dtype)
+            start = int(saved["next_window"])
+            counter["pass"] = int(saved.get("pass", 0))
+            logging.info(f"[{WHO}] resume: picking up from window {start + 1} of {len(windows)}"
+                         if start < len(windows) else f"[{WHO}] resume: all windows done, going to the blended finish")
+
+    def checkpoint(next_window):
+        if not h.save_progress:
+            return
+        try:
+            path = _save_progress(run_id, st=[_cpu(t) for t in st], pins=[_cpu(t) for t in pins],
+                                  done=[sorted(d) for d in done], key_src=_cpu(key_src), cap_src=_cpu(cap_src),
+                                  next_window=next_window, finished=None, **{"pass": counter["pass"]})
+            logging.info(f"[{WHO}] progress saved after window {next_window} ({path})")
+        except Exception as e:
+            logging.warning(f"[{WHO}] couldn't save progress: {e}")
+
     try:
         for wi, idxs in enumerate(windows):
+            if wi < start:
+                continue
             h.capstone, slot, note = None, None, ""
             if wi > 0:
                 if h.detail_swap and key_src is not None and idxs[0] in done[0]:
@@ -366,6 +461,9 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
                     ci = idxs[5 * ((len(idxs) - 1) // 5)]
                     cap_src = fin[0][:, :, ci:ci + 1].clone()
                 keep(wi, out, fin)
+                del out, fin, snap
+                _free_vram()
+                checkpoint(wi + 1)
                 continue
             if wi == 0:
                 if k < steps and need_key:
@@ -384,15 +482,28 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
                 ci = idxs[5 * ((len(idxs) - 1) // 5)]
                 cap_src = fin[0][:, :, ci:ci + 1].clone()
             keep(wi, out, x0)
+            del out, x0
+            _free_vram()
+            checkpoint(wi + 1)
         h.capstone = None
         if k >= steps:
-            return pack(st) / max(1.0 - float(sigmas[-1]), 1e-8)
-        logging.info(f"[{WHO}] hybrid: steps {k + 1}-{steps} blended over all {len(windows)} windows")
-        li_p, m_p = pack(clean_parts), pack(base_parts)
-        sk = float(sigmas[k])
-        noise_w = (pack(st) - (1.0 - sk) * li_p) / (sk * nscale)
-        return executor(guider, sigmas[k:], _pass_args(extra_args, counter["pass"]), progress(), noise_w, li_p, m_p,
-                        disable_pbar)
+            result = pack(st) / max(1.0 - float(sigmas[-1]), 1e-8)
+        else:
+            logging.info(f"[{WHO}] hybrid: steps {k + 1}-{steps} blended over all {len(windows)} windows")
+            li_p, m_p = pack(clean_parts), pack(base_parts)
+            sk = float(sigmas[k])
+            noise_w = (pack(st) - (1.0 - sk) * li_p) / (sk * nscale)
+            _free_vram()
+            result = executor(guider, sigmas[k:], _pass_args(extra_args, counter["pass"]), progress(), noise_w, li_p,
+                              m_p, disable_pbar)
+        if h.save_progress:
+            try:
+                _save_progress(run_id, finished=_cpu(result), next_window=len(windows))
+                logging.info(f"[{WHO}] finished latent saved ({_progress_path()}): if the decode fails, turn resume "
+                             f"on and run again to get it back without sampling")
+            except Exception as e:
+                logging.warning(f"[{WHO}] couldn't save the finished latent: {e}")
+        return result
     finally:
         h.capstone = None
         h.only_window, h.window_subset, h.mask_conds = None, None, None
@@ -558,13 +669,25 @@ class H3ClownHybridWindows:
                                                           "start. ethanfel = his drift_control recipe: full on the overlap, "
                                                           "a 4-latent taper to clean at the join, times next/current noise "
                                                           "level at every step."}),
+                "save_progress": ("BOOLEAN", {"default": True,
+                                              "tooltip": "Save the progress after every window, and the finished latent at "
+                                                         "the end, to output/geiru_hybrid_progress/last_run.pt (one file, "
+                                                         "overwritten each run). If ComfyUI crashes or runs out of memory, "
+                                                         "turn resume on and run again."}),
+                "resume": ("BOOLEAN", {"default": False,
+                                       "tooltip": "Pick up from the saved progress instead of starting over. Only works if "
+                                                  "nothing changed (same seed, size, length, steps and window settings; it can't tell if you changed a prompt); "
+                                                  "otherwise it starts from the beginning. If the run had already "
+                                                  "finished, the saved latent comes back straight away, so a failed "
+                                                  "decode can be redone without sampling. Turn it off again for new runs."}),
             },
         }
 
     def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=True,
               back_capstone=True, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
               split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False,
-              context_noise=False, context_noise_strength=1.0, context_noise_fade="linear", **_old):
+              context_noise=False, context_noise_strength=1.0, context_noise_fade="linear",
+              save_progress=True, resume=False, **_old):
         if not _supported(model.model):
             raise RuntimeError(f"{WHO} needs a newer ComfyUI with MiniMax H3 context windows (PR #17425). Update ComfyUI.")
         length = _video_latent_t(context_length)
@@ -591,6 +714,8 @@ class H3ClownHybridWindows:
         handler.finished_handoff = bool(finished_handoff)
         handler.context_noise = float(context_noise_strength) if context_noise else 0.0
         handler.context_noise_fade = context_noise_fade if context_noise_fade in FADES else "linear"
+        handler.save_progress = bool(save_progress)
+        handler.resume = bool(resume)
         m = model.clone()
         m.model_options["context_handler"] = handler
         if handler.back_capstone:
@@ -605,7 +730,8 @@ class H3ClownHybridWindows:
               + (f", capstone from step {int(capstone_step) + 1}" if back_capstone else "")
               + (", sound first" if sound_first else "")
               + (f", context noise {float(context_noise_strength):.2f} {handler.context_noise_fade}"
-                 if handler.context_noise > 0 else ""))
+                 if handler.context_noise > 0 else "")
+              + (", resuming from saved progress" if resume else "") + (", saving progress" if save_progress else ""))
         return (m,)
 
 
