@@ -30,7 +30,7 @@ When you chain H3 clips, each new clip starts from the tail of the last one. You
 
 Pull every shot back to clip 1. **Geiru Context** pins the previous shot's tail to the front of each shot, so the motion carries over. **Geiru Keystone** locks clip 1's first frame into the start of every shot and tacks clip 1's capstone onto the back, and **Geiru Late Lock** brings the capstone in only for the last steps, so the shot picks its own pose first. Every shot is pulled back toward how clip 1 looked, so the loss can't stack up, and with Geiru Context in front of Keystone the real frames are put back afterwards, so nothing from clip 1 ends up in the clips.
 
-It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/mad_clown_inventor_example.json`, or `example_workflows/noisy_clown_example.json` for the same with Geiru Context Noise added. See [Geiru Keystone and Geiru Late Lock](#geiru-keystone-and-geiru-late-lock).
+It's the simplest way to run a long chain: no language model and no extra renders. Start with `example_workflows/long_chain_keystone_and_late_lock/mad_clown_inventor_example.json`, or `example_workflows/long_chain_plus_context_noise/noisy_clown_example.json` for the same with Geiru Context Noise added. See [Geiru Keystone and Geiru Late Lock](#geiru-keystone-and-geiru-late-lock).
 
 ## Degradation protection (one switch)
 
@@ -38,7 +38,7 @@ Three nodes keep a long chain from drifting. Each keeps its own node and setting
 
 | Node | What it does |
 |---|---|
-| **Geiru Protection LoRA** | A model-only LoRA that only runs while Geiru Context's `degradation_protection` is on, and never on the first shot. Made for Imagineer13's H3 Anti-Burn LoRA (0.6, adjust to taste), which it downloads for you if it's missing. Example: [Clown in Imagination Land](example_workflows/clown_in_imagination_land_example.json). |
+| **Geiru Protection LoRA** | A model-only LoRA that only runs while Geiru Context's `degradation_protection` is on, and never on the first shot. Made for Imagineer13's H3 Anti-Burn LoRA (0.6, adjust to taste), which it downloads for you if it's missing. Example: [Clown in Imagination Land](example_workflows/long_chain_plus_antiburn_lora/clown_in_imagination_land_example.json). |
 | **Geiru Keystone** | Locks the source clip's clean first frame (keystone) into the start of every shot and/or tacks its capstone onto the back. |
 | **Geiru Late Lock** | Brings Keystone's latents in only from a chosen step, so the shot picks its own pose first. |
 | **Geiru Context Noise** | ethanfel's context noise: the held frames get some of the sampler's current noise, fading to none at the join, so H3 doesn't copy them so exactly. |
@@ -161,8 +161,8 @@ Rule that works:
 
 Two more are in this repo's `example_workflows` (moved over from my old packs and switched to this suite's Geiru Context and Geiru Anchoring, same settings):
 
-- [everyone_wants_a_piece_of_the_clown.json](example_workflows/everyone_wants_a_piece_of_the_clown.json): a Motion Context chain with Geiru Context (39, drop_first 17) and Geiru Anchoring (39, drop_last 17).
-- [withers_has_big_nattys.json](example_workflows/withers_has_big_nattys.json): the static vlog (odd shots fresh, even shots continue). On even shots, Geiru Context (39, drop_first 17) holds the end of the shot before at the start, and Geiru Anchoring (39, drop_last 17) holds the start of the shot after at the end. Motion Context's Load / Save Latent nodes are still used for the clips.
+- [everyone_wants_a_piece_of_the_clown.json](example_workflows/motion_context_chain/everyone_wants_a_piece_of_the_clown.json): a Motion Context chain with Geiru Context (39, drop_first 17) and Geiru Anchoring (39, drop_last 17).
+- [withers_has_big_nattys.json](example_workflows/static_vlog_odd_even_shots/withers_has_big_nattys.json): the static vlog (odd shots fresh, even shots continue). On even shots, Geiru Context (39, drop_first 17) holds the end of the shot before at the start, and Geiru Anchoring (39, drop_last 17) holds the start of the shot after at the end. Motion Context's Load / Save Latent nodes are still used for the clips.
 
 ### Joining the clips
 
@@ -178,7 +178,7 @@ So the two clips still share 39 frames of time: 22 identical, and 17 that are tw
 
 Don't cut the first 39 frames off the next clip instead: that joins two different takes of the same moment and can show a small jump. The last clip is always kept whole. For other settings, the overlap is `head_frames` and the identical part is `head_frames` minus the drops.
 
-**[Seamless Video Combiner](https://github.com/roycho87/workflows/blob/main/workflows/seamless_video_combiner/clussy_origin_story.json)** (in my workflows repo) does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/sane_clown_combiner.json` is set up for Geiru chains: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
+**[Seamless Video Combiner](https://github.com/roycho87/workflows/blob/main/workflows/seamless_video_combiner/clussy_origin_story.json)** (in my workflows repo) does the join for you, sound included (with a short audio crossfade at each seam). `example_workflows/join_clips_into_one_video/sane_clown_combiner.json` is set up for Geiru chains: 10 clips, 8 seconds (192 frames) each, overlap 39, cutting the end of each clip (End pair: End Overlap 39, End Join 0). For way 2, turn on **Use Beginning pair** (Beginning Overlap 39, Beginning Join 22). Copy the clips from `output/h3_ref2va/` into ComfyUI's `input` folder (or pick them in the ten Load Video nodes), set the number of videos and the duration if yours differ, and run.
 
 ## Geiru Keystone and Geiru Late Lock
 
@@ -271,7 +271,7 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 
 ### Mad Clown Inventor example
 
-`example_workflows/mad_clown_inventor_example.json` is a Geiru Chain workflow with **Geiru Keystone** + **Geiru Late Lock**: Geiru Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back` with `latent_folder` set to the chain's folder, and Late Lock on the capstone at step 4.
+`example_workflows/long_chain_keystone_and_late_lock/mad_clown_inventor_example.json` is a Geiru Chain workflow with **Geiru Keystone** + **Geiru Late Lock**: Geiru Context (39, drop_last 17, holding the sound too), Keystone on `keystone front + capstone back` with `latent_folder` set to the chain's folder, and Late Lock on the capstone at step 4.
 
 1. Load your reference pictures and write the prompt in the **H3 Prompt IDE** node.
 2. Press **Chain** (or **Run/Re-roll** for one shot). Don't use ComfyUI's Run button.
@@ -282,17 +282,17 @@ Late Lock does the restore, so join the clips the normal way (see [Joining the c
 
 ### Noisy Clown example
 
-`example_workflows/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added (ethanfel's context noise), so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8 in this workflow; the node now defaults to 1, which tested best in the [fade and strength sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md) (set it to 1 here too if you like). Use it the same way as the Mad Clown Inventor example, and flip Geiru Context's `degradation_protection` off around cuts and scene changes.
+`example_workflows/long_chain_plus_context_noise/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added (ethanfel's context noise), so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8 in this workflow; the node now defaults to 1, which tested best in the [fade and strength sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md) (set it to 1 here too if you like). Use it the same way as the Mad Clown Inventor example, and flip Geiru Context's `degradation_protection` off around cuts and scene changes.
 
 ### Clown in Imagination Land example
 
 > **Geiru Protection LoRA is new and has only had minor testing so far, but the initial results are very promising.** I'm rolling it out now, and I'm currently running more tests on the LoRA to make sure its effect is a good one (including whether the slight softening some people see comes from the LoRA or from degradation showing up in a different form). Please tell me how it goes for you in the [GitHub issues](https://github.com/roycho87/geiru_context_suite/issues).
 
-`example_workflows/clown_in_imagination_land_example.json` is the Noisy Clown example with **Geiru Protection LoRA** added: the full degradation protection set plus **Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) at 0.6, with Context Noise at 1. Geiru Protection LoRA sits between Geiru Context and Geiru Context Noise. It only loads the LoRA while `degradation_protection` is on, and never on the first shot. If you don't have the LoRA yet, it downloads it into `loras/antiburn` the first time it's needed. Use it the same way as the Noisy Clown example.
+`example_workflows/long_chain_plus_antiburn_lora/clown_in_imagination_land_example.json` is the Noisy Clown example with **Geiru Protection LoRA** added: the full degradation protection set plus **Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) at 0.6, with Context Noise at 1. Geiru Protection LoRA sits between Geiru Context and Geiru Context Noise. It only loads the LoRA while `degradation_protection` is on, and never on the first shot. If you don't have the LoRA yet, it downloads it into `loras/antiburn` the first time it's needed. Use it the same way as the Noisy Clown example.
 
 ### Clown Coaster example
 
-`example_workflows/clown_coaster_example.json` is a 60-second **Geiru Hybrid Windows** render in one go: a first-person space roller coaster where only the rider's gloved hands are seen. A rocket launch throws her onto the track, then a loop-de-loop, ghost space stingrays, down to Mars, she hits a HYPERDRIVE button, a ride over the Sun, and around a black hole.
+`example_workflows/hybrid_windows_60_second_single_render/clown_coaster_example.json` is a 60-second **Geiru Hybrid Windows** render in one go: a first-person space roller coaster where only the rider's gloved hands are seen. A rocket launch throws her onto the track, then a loop-de-loop, ghost space stingrays, down to Mars, she hits a HYPERDRIVE button, a ride over the Sun, and around a black hole.
 
 - 1433 frames (60 s) in 8 windows of 226 frames, overlap 39.
 - 8 prompt nodes, one per window, joined in order with **Conditioning Combine**, with `split_conds_to_windows` on.
@@ -307,7 +307,7 @@ Load your subject picture into Picture 1 and press ComfyUI's Run. The length and
 
 https://github.com/user-attachments/assets/840d5913-4df5-488a-ae09-3f3056f7e9b7
 
-`example_workflows/clowns_for_picard.json` is the Clown Coaster example as I actually rendered it: widescreen 1328 × 736 (0.98 MP), 60 seconds (1433 frames) in 8 windows of 226 frames, with more detailed, faster-moving prompts. The 8 prompts are in big **WINDOW 1-8 PROMPT** text boxes in the green group at the bottom, in ride order, so you don't have to type into the small prompt nodes.
+`example_workflows/hybrid_windows_60_second_single_render/clowns_for_picard.json` is the Clown Coaster example as I actually rendered it: widescreen 1328 × 736 (0.98 MP), 60 seconds (1433 frames) in 8 windows of 226 frames, with more detailed, faster-moving prompts. The 8 prompts are in big **WINDOW 1-8 PROMPT** text boxes in the green group at the bottom, in ride order, so you don't have to type into the small prompt nodes.
 
 Keystone, capstone (`capstone_step` 4), `finished_handoff` and `sound_first` on, `freenoise` off. Load your subject picture into Picture 1 and press ComfyUI's Run. It's a big render (a full minute at almost 1 MP); lower the size if you run out of memory. **SAVE LATENT (hybrid windows)** saves the finished latent to `output/latents/geiru_hybrid/`, so if the decode runs out of memory you can load it and decode it again (tiled) without sampling.
 
