@@ -261,7 +261,7 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 
 ## Example workflows
 
-The same workflows are also in [`example_workflows/workflows_with_boring_names`](example_workflows/workflows_with_boring_names), named after what they do instead of what's in them.
+I'm a clown and I'm ridiculous. My workflow names are equally so. The names can be a bit confusing, so I made a different folder of exact copies of them with more intuitive names, called [Workflows with Boring Names](example_workflows/workflows_with_boring_names), which you can use if you want to... I guess...
 
 | Workflow | Boring name |
 |---|---|
