@@ -54,7 +54,7 @@ Set them up once, then flip one switch: on for long stretches of one continuous 
 
 > **Geiru Protection LoRA is new and has only had minor testing so far, but the initial results are very promising.** I'm rolling it out now, and I'm currently running more tests on the LoRA to make sure its effect is a good one (including whether the slight softening some people see comes from the LoRA or from degradation showing up in a different form). Please tell me how it goes for you in the [GitHub issues](https://github.com/roycho87/geiru_context_suite/issues).
 
-**Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (`h3_antiburn_universal_v1`) eliminates virtually all of the burn that's left. Use it at **0.6** and adjust to taste, only from clip 2 on (never on clip 1), with a model-only LoRA loader. The 0.6 strength is Imagineer13's advice. dkackman also tried it at 0.6 on continuation segments only ([diffusers-workflow #1151](https://github.com/dkackman/diffusers-workflow/issues/1151)).
+**Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (`h3_antiburn_universal_v1`) eliminates virtually all of the burn that's left. Use it at **0.6** and adjust to taste, only from clip 2 on (never on clip 1), with a model-only LoRA loader. The 0.6 strength is Imagineer13's advice.
 
 The easy way is **Geiru Protection LoRA**: put it between Geiru Context and Geiru Context Noise and it handles all of that, downloading the LoRA into `loras/antiburn` the first time it's needed if you don't have it (see the [Clown in Imagination Land example](#clown-in-imagination-land-example)). It isn't included in this pack otherwise; download it from Imagineer13's page.
 
