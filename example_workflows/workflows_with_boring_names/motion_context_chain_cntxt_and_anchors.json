@@ -2999,7 +2999,7 @@
    ],
    "title": "This shot's prompt (index = shot - 1)",
    "properties": {
-    "aux_id": "roycho87/comfyui-load-text-batch-from-dir",
+    "aux_id": "roycho87/comfyui-load-batch-from-dir",
     "Node name for S&R": "LoadTextBatchFromDir",
     "ue_properties": {
      "widget_ue_connectable": {
@@ -3597,7 +3597,7 @@
    ],
    "title": "Video 1: dance reference (index = shot - 1, motion only)",
    "properties": {
-    "aux_id": "roycho87/comfyui-load-text-batch-from-dir",
+    "aux_id": "roycho87/comfyui-load-batch-from-dir",
     "Node name for S&R": "LoadVideoBatchFromDir",
     "ue_properties": {
      "widget_ue_connectable": {
