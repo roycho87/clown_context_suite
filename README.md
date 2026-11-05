@@ -237,6 +237,20 @@ Instead of chaining clips, it renders the whole video in one go, in overlapping 
 
 With keystone and capstone off, it works like plain hybrid windows. In my test (a 60-second render, 17 windows, same seed), the plain version lost a lot of detail by the end and the keystone + capstone version held its detail much better.
 
+### Experiment: 2 minutes in one render (16 windows)
+
+[![2-minute Geiru Hybrid Windows render](media/geiru_hybrid_windows_2min_16win.jpg)](media/geiru_hybrid_windows_2min_16win.mp4)
+
+**[Watch the 2-minute video (MP4)](media/geiru_hybrid_windows_2min_16win.mp4)**
+
+An experiment using the anti-degradation features inside context windows, plus crash protection: a 2 min 6 s first-person roller coaster ride (3031 frames, 960 × 544) in one render, in 16 windows of 226 frames with a 39-frame overlap, one prompt per window.
+
+- **Every window runs all 8 steps on its own** (`switch_step` 8), so there's no blended pass at the end. The anti-degradation features alone keep it from drifting.
+- **Keystone and capstone** in every window (`capstone_step` 6, so the capstone comes in for steps 7 and 8), and **context noise** (linear, 1) on each locked overlap.
+- **Crash protection** saves the progress after every window, so a crash or out-of-memory partway through a run this long doesn't lose the windows that are done.
+
+By eye there's no visible degradation from start to end. It's one render with no cuts and no stitching (the video is compressed for GitHub).
+
 Plug the model through it (model in, model out to the guider). It needs a ComfyUI with MiniMax H3 context windows: update ComfyUI if the node is missing.
 
 | Setting | Meaning |
