@@ -267,7 +267,7 @@ The same workflows are also in [`example_workflows/workflows_with_boring_names`]
 |---|---|
 | Mad Clown Inventor | `long_chain_keystone_and_late_lock` |
 | Noisy Clown | `long_chain_plus_context_noise` |
-| Clown in Imagination Land | `long_chain_plus_antiburn_lora` |
+| Clown in Imagination Land | `long_chain_plus_ctxnoise_and_antiburn_lora` |
 | Clown Coaster | `hybrid_windows_60_second_simple` |
 | Clowns for Picard | `hybrid_windows_60_second_widescreen` |
 | everyone_wants_a_piece_of_the_clown | `motion_context_chain` |
