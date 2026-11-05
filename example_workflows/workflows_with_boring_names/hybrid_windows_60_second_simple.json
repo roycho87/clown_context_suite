@@ -1909,7 +1909,7 @@
     }
    },
    "widgets_values": [
-    "WHERE TO GET THE NODES IN THIS WORKFLOW\n\nClowntext Hybrid Windows (Clown Context Suite):\nhttps://github.com/roycho87/geiru_context_suite\nNeeds ComfyUI updated to a version with MiniMax H3 context windows (PR #17425).\n\nH3 Prompt IDE:\nhttps://github.com/ethanfel/ComfyUI-H3-Prompt-IDE\n\nKJNodes (MiniMax low-VRAM / Sage attention nodes):\nhttps://github.com/kijai/ComfyUI-KJNodes\n\nVideoHelperSuite (Video Combine):\nhttps://github.com/Kosinkadink/ComfyUI-VideoHelperSuite\n\nEverything else is built into ComfyUI. Update ComfyUI if the MiniMax H3 nodes are missing."
+    "WHERE TO GET THE NODES IN THIS WORKFLOW\n\nClowntext Hybrid Windows (Clown Context Suite):\nhttps://github.com/roycho87/geiru_context_suite\nNeeds ComfyUI updated to a version with MiniMax H3 context windows (PR #17425).\n\nSave / Load Latent (the SAVE LATENT (hybrid windows) node) - install ONE of these, not both (they use the same node names):\n  H3 Motion Context: https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context\n  H3 Motion Context MultiRef: https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef\nComfyUI's own Save Latent can't save H3's video + audio latent, so this one is used.\n\nH3 Prompt IDE:\nhttps://github.com/ethanfel/ComfyUI-H3-Prompt-IDE\n\nKJNodes (MiniMax low-VRAM / Sage attention nodes):\nhttps://github.com/kijai/ComfyUI-KJNodes\n\nVideoHelperSuite (Video Combine):\nhttps://github.com/Kosinkadink/ComfyUI-VideoHelperSuite\n\nEverything else is built into ComfyUI. Update ComfyUI if the MiniMax H3 nodes are missing."
    ],
    "widgets_values_named": {
     "text": "WHERE TO GET THE NODES IN THIS WORKFLOW\n\nClown nodes + Clown Chain (Clown Context Suite):\nhttps://github.com/roycho87/geiru_context_suite\n\nLoad / Save Latent - install ONE of these, not both (they use the same node names):\n  H3 Motion Context: https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context\n  H3 Motion Context MultiRef: https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef\n\nH3 Prompt IDE:\nhttps://github.com/ethanfel/ComfyUI-H3-Prompt-IDE\n\nKJNodes (MiniMax low-VRAM / Sage attention nodes):\nhttps://github.com/kijai/ComfyUI-KJNodes\n\nVideoHelperSuite (Video Combine):\nhttps://github.com/Kosinkadink/ComfyUI-VideoHelperSuite\n\nComfyUI-Custom-Scripts (Show Text):\nhttps://github.com/pythongosssss/ComfyUI-Custom-Scripts\n\nEverything else is built into ComfyUI. Update ComfyUI if the MiniMax H3 nodes are missing."
@@ -4198,14 +4198,14 @@
   },
   {
    "id": 3063,
-   "type": "SaveLatent",
+   "type": "MiniMaxH3MotionContextSaveLatent",
    "pos": [
     4060,
     290
    ],
    "size": [
-    315,
-    58
+    320,
+    90
    ],
    "flags": {},
    "order": 0,
@@ -4213,17 +4213,46 @@
    "title": "SAVE LATENT (hybrid windows)",
    "inputs": [
     {
-     "name": "samples",
+     "localized_name": "latent",
+     "name": "latent",
      "type": "LATENT",
      "link": 176
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "clip_index",
+     "name": "clip_index",
+     "type": "INT",
+     "widget": {
+      "name": "clip_index"
+     },
+     "link": null
     }
    ],
-   "outputs": [],
+   "outputs": [
+    {
+     "localized_name": "latent_path",
+     "name": "latent_path",
+     "type": "STRING",
+     "links": []
+    }
+   ],
    "properties": {
-    "Node name for S&R": "SaveLatent"
+    "cnr_id": "comfyui-h3-motion-context",
+    "Node name for S&R": "MiniMaxH3MotionContextSaveLatent",
+    "aux_id": "NikoDemon80/ComfyUI-H3-Motion-Context"
    },
    "widgets_values": [
-    "latents/geiru_hybrid/clown_coaster"
+    "latents/geiru_hybrid/clown_coaster",
+    0
    ]
   }
  ],

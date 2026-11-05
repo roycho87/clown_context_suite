@@ -255,7 +255,7 @@ Plug the model through it (model in, model out to the guider). It needs a ComfyU
 | `context_noise_strength` | How much noise the first overlap latent gets (1 default = as much as the new latents). |
 | `context_noise_fade` | How the context noise fades to clean at the join: **linear** (default, an even fade, best in the [fade sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md)), **ease** (drops off faster), or **ethanfel** (his drift_control recipe: full on the overlap, a 4-latent taper to the join, scaled by next/current noise level at every step). |
 | `sound_first` | Off by default. On: renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
-| `crash_protection` | On by default. Saves the progress after every window to `output/geiru_hybrid_progress/crash_protection.pt` and clears unused GPU memory between windows. If ComfyUI crashes or runs out of memory, press Run again on the same run (same seed, prompts, size, length and settings) and it picks up from the last saved window. The file is deleted when the run finishes. It can't see a changed LoRA, turbo or sampler, so change the seed if you change those after a crash. To keep the finished latent, plug the sampler's output into a Save Latent node. |
+| `crash_protection` | On by default. Saves the progress after every window to `output/geiru_hybrid_progress/crash_protection.pt` and clears unused GPU memory between windows. If ComfyUI crashes or runs out of memory, press Run again on the same run (same seed, prompts, size, length and settings) and it picks up from the last saved window. The file is deleted when the run finishes. It can't see a changed LoRA, turbo or sampler, so change the seed if you change those after a crash. To keep the finished latent, plug the sampler's output into Motion Context's (or MultiRef's) **Save Latent** node. ComfyUI's own Save Latent can't save H3's video + audio latent. |
 
 **One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.
 
@@ -300,7 +300,7 @@ Late Lock puts the real frame back, so join the clips the normal way (see [Joini
 - 1433 frames (60 s) in 8 windows of 226 frames, overlap 39.
 - 8 prompt nodes, one per window, joined in order with **Conditioning Combine**, with `split_conds_to_windows` on.
 - Keystone, capstone (`capstone_step` 4) and `finished_handoff` on, `freenoise` off.
-- **SAVE LATENT (hybrid windows)** saves the finished latent to `output/latents/geiru_hybrid/`, so if the decode runs out of memory you can load it and decode it again (tiled) without sampling.
+- **SAVE LATENT (hybrid windows)** (Motion Context's Save Latent, since ComfyUI's own can't save H3's video + audio latent) saves the finished latent to `output/latents/geiru_hybrid/` as a new numbered file each run. If the decode runs out of memory, load it with Motion Context's **Load Latent** and decode it again (tiled) without sampling.
 
 Load your subject picture into Picture 1 and press ComfyUI's Run. The length and size are on PROMPT 1; if you change the length, the prompts won't line up one per window any more.
 
