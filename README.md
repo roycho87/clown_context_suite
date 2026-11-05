@@ -270,8 +270,8 @@ I'm a clown and I'm ridiculous. My workflow names are equally so. The names can 
 | Clown in Imagination Land | `long_chain_plus_ctxnoise_and_antiburn_lora` |
 | Clown Coaster | `hybrid_windows_60_second_simple` |
 | Clowns for Picard | `hybrid_windows_60_second_widescreen` |
-| everyone_wants_a_piece_of_the_clown | `motion_context_chain` |
-| withers_has_big_nattys | `static_vlog_odd_even_shots` |
+| everyone_wants_a_piece_of_the_clown | `motion_context_chain_cntxt_and_anchors` |
+| withers_has_big_nattys | `static_vlog_odd_even_shots_cntxt_and_anchors` |
 | sane_clown_combiner | `join_clips_into_one_video` |
 
 ### Mad Clown Inventor example
