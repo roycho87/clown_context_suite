@@ -60,6 +60,12 @@ The easy way is **Geiru Protection LoRA**: put it between Geiru Context and Geir
 
 In a 20-clip test on top of degradation protection, it gave the lowest colour drift and burn of every setting tried: the fine texture stayed at clip 1's level all the way through the beach clips, and the motion looked just as good with it as without. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes/blob/main/20261104/antiburn_results.md).
 
+### Your speed (turbo) LoRA matters
+
+Certain LoRAs affect degradation protection differently, because a LoRA changes how the model reacts to noise. The noise itself is the same (it comes from the scheduler), but each turbo was trained on its own noise levels, so it can handle the partly-noised held frames very differently.
+
+All of my testing used `minimax_h3_ref2v_turbo_8step_v1.0_768p_comfyui_resized_avg_rank_64_bf16`. Etupa (thanks for testing!) still got degradation with `minimax_h3_ref2v_turbo_silver_dareties_comfy_pruned_v2`, even with context noise at 1, and none with the 8-step turbo above (704 × 1280, 3 clips of 8 s). If you see degradation with a different turbo, try that one. I'll be testing other speed LoRAs and higher resolutions next.
+
 ### Results
 
 On a walking scene, keystone + capstone + context noise held for 20 clips (about 2½ minutes) with no build-up; on a 50-clip chain through four scenes, it held where the plain chain fell apart (below). On a fully locked-off static shot the texture holds, but the colour can still slowly darken. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes).
