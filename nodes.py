@@ -200,16 +200,14 @@ CONTEXT_AUDIO_INPUTS = {
     **FEATHER_INPUT,
 }
 
-AUDIO_INPUTS = {
-    "audio_frames": ("INT", {"default": 0, "min": 0, "max": 4096,
-                             "tooltip": "Frames of audio to hold. 0 = the same window as the video. "
-                                        "The window is END-ALIGNED with the pinned video, so this only "
-                                        "changes how far back the sound reaches. Multiples of 3 land "
-                                        "exactly on the 40 Hz audio grid."}),
-    "audio_feather_ticks": ("INT", {"default": 0, "min": 0, "max": 64,
-                                    "tooltip": "Half-cosine release over this many audio steps at the free "
-                                               "end of the held audio, so the model eases back in instead of "
-                                               "cutting. 0 = hard edge. 8 steps is 0.2 s."}),
+ANCHOR_AUDIO_INPUTS = {
+    "audio_drop_first": ("INT", {"default": 0, "min": 0, "max": 4096,
+                                 "tooltip": "Audio is held for the WHOLE window (tail_frames), even where drop_last / "
+                                            "drop_first free the picture: the model makes those frames fit the held sound. "
+                                            "This trims frames of held audio off the FRONT, so this shot's own sound "
+                                            "runs longer before the held sound takes over. 0 = hold all of it. "
+                                            "Multiples of 3 land exactly on the 40 Hz audio grid."}),
+    **FEATHER_INPUT,
 }
 
 
@@ -424,7 +422,7 @@ class H3BlockTailAnchorExperimental:
             "hold_audio": ("BOOLEAN", {"default": True,
                                        "tooltip": "Hold the source's audio over the pinned video. Off = video only, audio is regenerated."}),
         }
-        req.update(AUDIO_INPUTS)
+        req.update(ANCHOR_AUDIO_INPUTS)
         req["first_shot"] = ("INT", {"default": 1, "min": -9999, "max": 99999,
                                      "tooltip": "Number of the first shot of your run. On that shot (or earlier) next_shot isn't "
                                                 "loaded and the latent passes through. Only used when shot_number is plugged in."})
@@ -454,7 +452,7 @@ class H3BlockTailAnchorExperimental:
         return (out,)
 
     def _anchor(self, latent, tail_frames, drop_last=17, drop_first=0, hold_audio=True,
-               audio_frames=0, audio_feather_ticks=0, next_shot=None, first_shot=1, shot_number=None):
+               audio_drop_first=0, audio_feather_ticks=0, next_shot=None, first_shot=1, shot_number=None, **_old):
         who = "Geiru Anchoring Experimental"
         if shot_number is not None and int(shot_number) <= int(first_shot):
             print(f"[{who}] shot {shot_number} is the first shot (first_shot = {first_shot}) - next_shot not loaded, latent passed through unchanged")
@@ -502,7 +500,7 @@ class H3BlockTailAnchorExperimental:
         vmask[:, :, d0:d0 + n] = 0.0
         masks[vi] = vmask
 
-        # ---- audio: under the pinned frames, end-aligned with them ----
+        # ---- audio: the WHOLE window (this shot's last F_all frames), minus audio_drop_first off the front ----
         held_audio = 0
         ai = _audio_index(parts)
         si = _audio_index(src_parts)
@@ -515,27 +513,28 @@ class H3BlockTailAnchorExperimental:
             if ta.shape[1:-1] != sa.shape[1:-1]:
                 print(f"[{who}] audio latent shapes differ ({tuple(sa.shape)} vs {tuple(ta.shape)}) - audio not held")
             else:
-                want = min(int(audio_frames), F) if int(audio_frames) > 0 else F
-                _grid_note(who, want, "audio window")
-                _overhang_note(who, src, sa, "next shot")
-                # this shot's audio grid is counted back from its end, the source's from its start
-                off = _audio_len(ta) - _audio_steps(Lt)
-                he = hs + F
-                a1 = min(_audio_steps(he) + off, _audio_len(ta))
-                at = _audio_steps(he) - _audio_steps(he - want)
-                src1 = min(_audio_steps(sf0 + F), _audio_len(sa))
-                at = max(0, min(at, a1, src1))
-                a0 = a1 - at
-                if at > 0:
-                    ta = ta.clone()
-                    ta[..., a0:a1] = sa[..., src1 - at:src1].to(device=ta.device, dtype=ta.dtype)
-                    parts[ai] = ta
-                    amask = masks[ai]
-                    amask = torch.ones_like(ta) if amask.shape != ta.shape else amask.clone()
-                    amask[..., a0:a1] = 0.0
-                    _feather(amask, a0, at, audio_feather_ticks, from_end=False)
-                    masks[ai] = amask
-                    held_audio = at
+                adf = max(0, int(audio_drop_first))
+                want = F_all - adf                          # frames of held audio, ending at this shot's last frame
+                if want <= 0:
+                    print(f"[{who}] audio_drop_first {adf} drops the whole window ({F_all}) - no audio held")
+                else:
+                    _grid_note(who, want, "audio window")
+                    _overhang_note(who, src, sa, "next shot")
+                    a1 = _audio_len(ta)                     # the window ends at this shot's end
+                    src1 = min(_audio_steps(F_all), _audio_len(sa))   # source frame F_all
+                    at = _audio_steps(F_all) - _audio_steps(adf)
+                    at = max(0, min(at, a1, src1))
+                    a0 = a1 - at
+                    if at > 0:
+                        ta = ta.clone()
+                        ta[..., a0:a1] = sa[..., src1 - at:src1].to(device=ta.device, dtype=ta.dtype)
+                        parts[ai] = ta
+                        amask = masks[ai]
+                        amask = torch.ones_like(ta) if amask.shape != ta.shape else amask.clone()
+                        amask[..., a0:a1] = 0.0
+                        _feather(amask, a0, at, audio_feather_ticks, from_end=False)
+                        masks[ai] = amask
+                        held_audio = at
         elif hold_audio:
             print(f"[{who}] no audio stream in one of the latents - video only")
 
