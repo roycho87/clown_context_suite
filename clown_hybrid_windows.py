@@ -106,7 +106,7 @@ def _load_progress(run_id):
     if not os.path.isfile(path):
         return None
     try:
-        data = torch.load(path, map_location="cpu", weights_only=False)
+        data = torch.load(path, map_location="cpu", weights_only=True)   # tensors, lists and numbers only; never runs code from the file
     except Exception as e:
         logging.warning(f"[{WHO}] crash protection: couldn't read the saved progress ({e}) - starting from the beginning")
         return None
