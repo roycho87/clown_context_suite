@@ -150,8 +150,9 @@ def _feather(mask, start, length, ticks, from_end):
     if ticks <= 0:
         return
     for k in range(ticks):
-        # 0 at the held side, 1 at the free side
-        t = (k + 1) / float(ticks + 1)
+        # k = 0 is the step right next to the free side, so it gets the highest value;
+        # deeper into the held run the values fall toward 0 (fully held)
+        t = (ticks - k) / float(ticks + 1)
         v = 0.5 - 0.5 * math.cos(math.pi * t)
         idx = start + length - 1 - k if from_end else start + k
         mask[..., idx] = v
@@ -181,6 +182,23 @@ def _pack(latent, parts, masks, packed, who):
         out["noise_mask"] = masks[0]
     return out
 
+
+FEATHER_INPUT = {
+    "audio_feather_ticks": ("INT", {"default": 0, "min": 0, "max": 64,
+                                    "tooltip": "Half-cosine release over this many audio steps at the free "
+                                               "end of the held audio, so the model eases back in instead of "
+                                               "cutting. 0 = hard edge. 8 steps is 0.2 s."}),
+}
+
+CONTEXT_AUDIO_INPUTS = {
+    "audio_drop_last": ("INT", {"default": 0, "min": 0, "max": 4096,
+                                "tooltip": "Audio is held for the WHOLE overlap (head_frames), even where drop_last / "
+                                           "drop_first free the picture: the model makes those frames fit the held sound. "
+                                           "This trims frames of held audio off the END, so the new shot's own sound "
+                                           "comes in sooner. 0 = hold all of it. Multiples of 3 land exactly on the "
+                                           "40 Hz audio grid."}),
+    **FEATHER_INPUT,
+}
 
 AUDIO_INPUTS = {
     "audio_frames": ("INT", {"default": 0, "min": 0, "max": 4096,
@@ -248,7 +266,7 @@ class H3ClownContextExperimental:
             "first_shot": ("INT", {"default": 1, "min": -9999, "max": 99999,
                                    "tooltip": "Number of the first shot of your run. On that shot (or earlier) the previous latent is ignored."}),
         }
-        req.update(AUDIO_INPUTS)
+        req.update(CONTEXT_AUDIO_INPUTS)
         req["degradation_protection"] = ("BOOLEAN", {"default": True,
             "label_on": "on - Keystone / Late Lock / Context Noise run", "label_off": "off - they pass through",
             "tooltip": "One switch for the degradation protection nodes after this one (Geiru Keystone, Geiru Late Lock, "
@@ -282,7 +300,7 @@ class H3ClownContextExperimental:
         return (out,)
 
     def _anchor(self, latent, head_frames, drop_last=0, drop_first=17, hold_audio=True, first_shot=1,
-               audio_frames=0, audio_feather_ticks=0, shot_number=None, previous_shot=None):
+               audio_drop_last=0, audio_feather_ticks=0, shot_number=None, previous_shot=None, **_old):
         who = "Geiru Context Experimental"
         if shot_number is not None and int(shot_number) <= int(first_shot):
             print(f"[{who}] shot {shot_number} is the first shot (first_shot = {first_shot}) - previous latent ignored, latent passed through unchanged")
@@ -329,7 +347,7 @@ class H3ClownContextExperimental:
         vmask[:, :, d0:d0 + n] = 0.0
         masks[vi] = vmask
 
-        # ---- audio: under the held frames, end-aligned with them ----
+        # ---- audio: the WHOLE overlap (frames 0..F_all-1), minus audio_drop_last off the end ----
         held_audio = 0
         ai = _audio_index(parts)
         si = _audio_index(src_parts)
@@ -342,26 +360,27 @@ class H3ClownContextExperimental:
             if ta.shape[1:-1] != sa.shape[1:-1]:
                 print(f"[{who}] audio latent shapes differ ({tuple(sa.shape)} vs {tuple(ta.shape)}) - audio not held")
             else:
-                want = min(int(audio_frames), F) if int(audio_frames) > 0 else F
-                _grid_note(who, want, "audio window")
-                _overhang_note(who, src, sa, "previous shot")
-                he = hs + F                                    # one past the last held frame
-                a1 = min(_audio_steps(he), _audio_len(ta))
-                at = min(_audio_steps(he) - _audio_steps(he - want), a1)
-                a0 = a1 - at
-                src1 = min(_audio_steps(sf0 + F), _audio_len(sa))
-                at = min(at, src1)
-                a0 = a1 - at
-                if at > 0:
-                    ta = ta.clone()
-                    ta[..., a0:a1] = sa[..., src1 - at:src1].to(device=ta.device, dtype=ta.dtype)
-                    parts[ai] = ta
-                    amask = masks[ai]
-                    amask = torch.ones_like(ta) if amask.shape != ta.shape else amask.clone()
-                    amask[..., a0:a1] = 0.0
-                    _feather(amask, a0, at, audio_feather_ticks, from_end=True)
-                    masks[ai] = amask
-                    held_audio = at
+                adl = max(0, int(audio_drop_last))
+                want = F_all - adl                          # frames of held audio, from this shot's frame 0
+                if want <= 0:
+                    print(f"[{who}] audio_drop_last {adl} drops the whole overlap ({F_all}) - no audio held")
+                else:
+                    _grid_note(who, want, "audio window")
+                    _overhang_note(who, src, sa, "previous shot")
+                    a0 = 0
+                    at = min(_audio_steps(want), _audio_len(ta))
+                    src0 = _audio_steps(Ls - F_all)         # previous shot's matching frame
+                    at = min(at, _audio_len(sa) - src0)
+                    if at > 0:
+                        ta = ta.clone()
+                        ta[..., a0:a0 + at] = sa[..., src0:src0 + at].to(device=ta.device, dtype=ta.dtype)
+                        parts[ai] = ta
+                        amask = masks[ai]
+                        amask = torch.ones_like(ta) if amask.shape != ta.shape else amask.clone()
+                        amask[..., a0:a0 + at] = 0.0
+                        _feather(amask, a0, at, audio_feather_ticks, from_end=True)
+                        masks[ai] = amask
+                        held_audio = at
         elif hold_audio:
             print(f"[{who}] no audio stream in one of the latents - video only")
 

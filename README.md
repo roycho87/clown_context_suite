@@ -141,7 +141,7 @@ Both copy real latents into the shot at matching block positions and mask them s
 
 - `head_frames` (Context) is the overlap with the previous shot. If you use pre-split audio, set it to the audio overlap (e.g. 39).
 - `drop_last` / `drop_first` trim the held frames from either end.
-- `hold_audio` holds the audio under the held frames too.
+- `hold_audio` holds the previous shot's audio for the whole overlap (all `head_frames`), even where `drop_last` / `drop_first` free the picture: the model makes those frames fit the held sound. `audio_drop_last` trims held audio off the end so the new shot's own sound comes in sooner (0 = hold it all). `audio_feather_ticks` fades the held audio out at the join instead of a hard cut.
 - `shot_number` (optional, from the Geiru Shot Counter): on the first shot they don't load their source at all and pass the latent through. Handy when Anchoring's `next_shot` comes from a Load Latent of a clip that isn't made yet. Leave it unplugged and they work as before.
 
 **Recommended settings** (the Anchoring frames must outnumber the Context frames):
