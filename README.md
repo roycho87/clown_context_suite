@@ -15,7 +15,7 @@ The Geiru Context Suite stands on other people's work. I'm building off it, so a
 - **kijai** ([GitHub](https://github.com/kijai)): ComfyUI's MiniMax H3 support and the H3 context windows ([PR #17425](https://github.com/Comfy-Org/ComfyUI/pull/17425)) that Geiru Hybrid Windows is built on, plus [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes).
 - **JalenBrunson**: [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows), which Geiru Hybrid Windows works like. I just added the keystone and capstone to it.
 - **TrentHunter82**: [TrentNodes](https://github.com/TrentHunter82/TrentNodes). Its degrade node made the bad frame 0 tests possible, which showed how much a clean frame 0 matters (the idea behind Geiru Keystone).
-- **Imagineer13**: the [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (training code on [GitHub](https://github.com/TryingSomeStuff13/ai-toolkit/tree/h3-antiburn/extensions_built_in/diffusion_models/minimax_h3/antiburn)), used in the experimental [Geiru Protection LoRA](https://github.com/roycho87/geiru-protection-lora-experimental). Not part of this pack.
+- **Imagineer13**: the [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (training code on [GitHub](https://github.com/TryingSomeStuff13/ai-toolkit/tree/h3-antiburn/extensions_built_in/diffusion_models/minimax_h3/antiburn)), used in the experimental [Geiru Protection LoRA](https://github.com/roycho87/Geiru-Protection-LoRa-Experimental). Not part of this pack.
 - Everyone on the Banodoco Discord and r/StableDiffusion who tested, argued and shared results.
 
 ## The problem
@@ -51,7 +51,7 @@ Set them up once, then flip one switch: on for long stretches of one continuous 
 
 ### Geiru Protection LoRA moved to an experimental repo
 
-Geiru Protection LoRA (a LoRA loader that only runs while protection is on, made for Imagineer13's [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA)) is now in its own repo: [geiru-protection-lora-experimental](https://github.com/roycho87/geiru-protection-lora-experimental). The early tests showed a colour improvement, but later tests weren't able to replicate it; the suspected cause is double compression of one of the initial test's side-by-side videos during stitching. I plan to experiment with training a LoRA that would work with this concept. The Clown in Imagination Land example moved there too.
+Geiru Protection LoRA (a LoRA loader that only runs while protection is on, made for Imagineer13's [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA)) is now in its own repo: [Geiru-Protection-LoRa-Experimental](https://github.com/roycho87/Geiru-Protection-LoRa-Experimental). The early tests showed a colour improvement, but later tests weren't able to replicate it; the suspected cause is double compression of one of the initial test's side-by-side videos during stitching. I plan to experiment with training a LoRA that would work with this concept. The Clown in Imagination Land example moved there too.
 
 ### Your speed (turbo) LoRA matters
 
