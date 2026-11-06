@@ -15,7 +15,7 @@ The Geiru Context Suite stands on other people's work. I'm building off it, so a
 - **kijai** ([GitHub](https://github.com/kijai)): ComfyUI's MiniMax H3 support and the H3 context windows ([PR #17425](https://github.com/Comfy-Org/ComfyUI/pull/17425)) that Geiru Hybrid Windows is built on, plus [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes).
 - **JalenBrunson**: [ComfyUI-HybridWindows](https://github.com/Jalen-Brunson/ComfyUI-HybridWindows), which Geiru Hybrid Windows works like. I just added the keystone and capstone to it.
 - **TrentHunter82**: [TrentNodes](https://github.com/TrentHunter82/TrentNodes). Its degrade node made the bad frame 0 tests possible, which showed how much a clean frame 0 matters (the idea behind Geiru Keystone).
-- **Imagineer13**: the [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (training code on [GitHub](https://github.com/TryingSomeStuff13/ai-toolkit/tree/h3-antiburn/extensions_built_in/diffusion_models/minimax_h3/antiburn)), recommended below. Not part of this pack.
+- **Imagineer13**: the [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (training code on [GitHub](https://github.com/TryingSomeStuff13/ai-toolkit/tree/h3-antiburn/extensions_built_in/diffusion_models/minimax_h3/antiburn)), used in the experimental [Geiru Protection LoRA](https://github.com/roycho87/geiru-protection-lora-experimental). Not part of this pack.
 - Everyone on the Banodoco Discord and r/StableDiffusion who tested, argued and shared results.
 
 ## The problem
@@ -37,7 +37,6 @@ Four nodes keep a long chain from drifting. Each keeps its own node and settings
 | **Geiru Keystone** | Locks the source clip's clean first frame (keystone) into the start of every shot and/or tacks its capstone onto the back. |
 | **Geiru Late Lock** | Brings Keystone's latents in only from a chosen step, so the shot picks its own pose first. |
 | **Geiru Context Noise** | ethanfel's context noise: the held frames get some of the sampler's current noise, fading to none at the join, so H3 doesn't copy them so exactly. |
-| **Geiru Protection LoRA** | A model-only LoRA that only runs while protection is on, and never on the first shot. Made for the H3 Anti-Burn LoRA, which it downloads for you if it's missing (see below). |
 
 **Geiru Context**'s `degradation_protection` switch turns them all on or off together:
 
@@ -46,19 +45,13 @@ Four nodes keep a long chain from drifting. Each keeps its own node and settings
 
 Set them up once, then flip one switch: on for long stretches of one continuous scene, off around cuts and scene changes. In testing, a hard cut or a new environment already resets the drift on its own, so protection is only needed while the scene stays the same. When the scene changes, point Keystone's `source_clip` at the first clip that fully shows the new scene (not the transition clip).
 
-**Wiring:** Geiru Context → (Geiru Protection LoRA) → Geiru Context Noise → (Geiru Anchoring) → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise, Keystone and Late Lock.
+**Wiring:** Geiru Context → Geiru Context Noise → (Geiru Anchoring) → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise, Keystone and Late Lock.
 
 **With Geiru Anchoring:** Anchoring holds frames at the end of the shot, which is where the capstone would go. So when Anchoring is holding something, Keystone and Late Lock skip the capstone automatically (the keystone at the front is still used). Nothing to set.
 
-### Recommended: the H3 Anti-Burn LoRA
+### Geiru Protection LoRA moved to an experimental repo
 
-> **Geiru Protection LoRA is new and has only had minor testing so far, but the initial results are very promising.** I'm rolling it out now, and I'm currently running more tests on the LoRA to make sure its effect is a good one (including whether the slight softening some people see comes from the LoRA or from degradation showing up in a different form). Please tell me how it goes for you in the [GitHub issues](https://github.com/roycho87/geiru_context_suite/issues).
-
-**Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) (`h3_antiburn_universal_v1`) eliminates virtually all of the burn that's left. Use it at **0.6** and adjust to taste, only from clip 2 on (never on clip 1), with a model-only LoRA loader. The 0.6 strength is Imagineer13's advice.
-
-The easy way is **Geiru Protection LoRA**: put it between Geiru Context and Geiru Context Noise and it handles all of that, downloading the LoRA into `loras/antiburn` the first time it's needed if you don't have it (see the [Clown in Imagination Land example](#clown-in-imagination-land-example)). It isn't included in this pack otherwise; download it from Imagineer13's page.
-
-In a 20-clip test on top of degradation protection, it gave the lowest colour drift and burn of every setting tried: the fine texture stayed at clip 1's level all the way through the beach clips, and the motion looked just as good with it as without. Full numbers: [NerdNotes](https://github.com/roycho87/NerdNotes/blob/main/20261104/antiburn_results.md).
+Geiru Protection LoRA (a LoRA loader that only runs while protection is on, made for Imagineer13's [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA)) is now in its own repo: [geiru-protection-lora-experimental](https://github.com/roycho87/geiru-protection-lora-experimental). The early tests showed a colour improvement, but later tests weren't able to replicate it; the suspected cause is double compression of one of the initial test's side-by-side videos during stitching. I plan to experiment with training a LoRA that would work with this concept. The Clown in Imagination Land example moved there too.
 
 ### Your speed (turbo) LoRA matters
 
@@ -110,7 +103,6 @@ Everything shows up under the **Geiru Context Suite** category.
 | **Geiru Keystone** | Puts clip 1's first frame (keystone) into every shot and/or tacks its capstone onto the back. With Geiru Context in front of it, puts the real frame back afterwards. |
 | **Geiru Late Lock** | Picks the step Keystone's latents come in, so the shot picks its own pose first. |
 | **Geiru Context Noise** | ethanfel's context noise on the held frames. The real held latents are put back after sampling. |
-| **Geiru Protection LoRA** | Loads a LoRA only while protection is on, never on the first shot. |
 | **Geiru Hybrid Windows** | One long render (a minute or more) in overlapping windows instead of a chain of clips, with clip 1's keystone and capstone in every window. |
 
 ## Geiru Shot Counter
@@ -287,7 +279,6 @@ I'm a clown and I'm ridiculous. My workflow names are equally so. The names can 
 |---|---|
 | Mad Clown Inventor | `long_chain_keystone_and_late_lock` |
 | Noisy Clown | `long_chain_plus_context_noise` |
-| Clown in Imagination Land | `long_chain_plus_ctxnoise_and_antiburn_lora` |
 | Clown Coaster | `hybrid_windows_60_second_simple` |
 | Clowns for Picard | `hybrid_windows_60_second_widescreen` |
 | everyone_wants_a_piece_of_the_clown | `motion_context_chain_cntxt_and_anchors` |
@@ -308,10 +299,6 @@ Late Lock puts the real frame back, so join the clips the normal way (see [Joini
 ### Noisy Clown example
 
 `example_workflows/noisy_clown_example.json` is the Mad Clown Inventor workflow with **Geiru Context Noise** added, so you can try the full degradation protection set: Geiru Context → Geiru Context Noise → Geiru Keystone → Geiru Late Lock → sampler, with the model plugged through Context Noise and Late Lock. Context Noise is at 0.8 in this workflow; the node now defaults to 1, which tested best in the [fade and strength sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md) (set it to 1 here too if you like). Use it the same way as Mad Clown Inventor, and flip `degradation_protection` off around cuts and scene changes.
-
-### Clown in Imagination Land example
-
-`example_workflows/clown_in_imagination_land_example.json` is the Noisy Clown example with **Geiru Protection LoRA** added (between Geiru Context and Geiru Context Noise), loading **Imagineer13**'s [H3 Anti-Burn LoRA](https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA) at 0.6, with Context Noise at 1. Use it the same way as Noisy Clown. The LoRA is new; see the note under [Recommended: the H3 Anti-Burn LoRA](#recommended-the-h3-anti-burn-lora).
 
 ### Clown Coaster example
 

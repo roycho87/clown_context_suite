@@ -275,7 +275,7 @@ class H3ClownContextExperimental:
     def anchor(self, latent, head_frames, *args, degradation_protection=True, **kwargs):
         raw = self._anchor(latent, head_frames, *args, **kwargs)[0]
         out = dict(raw)
-        out["geiru_held"] = raw is not latent                     # False on the first shot: read by Geiru Protection LoRA
+        out["geiru_held"] = raw is not latent                     # False on the first shot: read by Geiru Protection LoRA (experimental repo)
         out["geiru_protection"] = bool(degradation_protection)   # read by Keystone / Late Lock / Context Noise
         if not degradation_protection:
             print("[Geiru Context] degradation protection off - Keystone, Late Lock and Context Noise will pass through")

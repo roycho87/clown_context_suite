@@ -10,7 +10,6 @@ const CLOWN_NODES = new Set([
     "H3ClownKeyframe",
     "H3ClownLateLock",
     "H3ClownContextNoise",
-    "H3ClownProtectionLora",
     "H3ClownHybridWindows",
 ]);
 const TITLE_PINK = "#c2407a";
