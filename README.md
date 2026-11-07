@@ -275,23 +275,29 @@ By eye there's no visible degradation. Measured, the background darkens slowly: 
 
 Plug the model through it (model in, model out to the guider). It needs a ComfyUI with MiniMax H3 context windows: update ComfyUI if the node is missing.
 
+The main settings are always on the node. The keystone, capstone, context noise, `sound_first` and `finished_handoff` settings are **advanced**: click **Show advanced inputs** at the bottom of the node to see them (or turn on showing advanced inputs in ComfyUI's settings). A setting that does nothing grays out: `keystone_step` while `keystone_swap` is off, `capstone_step` while `back_capstone` is off, and the context noise strength and fade while `context_noise` is off. With the defaults (keystone, capstone and context noise off) it works like plain hybrid windows.
+
 | Setting | Meaning |
 |---|---|
 | `context_length` / `context_overlap` | Window size and overlap in frames (17n + 5). 124 / 39 is about 5 seconds per window. |
 | `switch_step` | Steps each window renders on its own before the blended finish. 6 of 8 = steps 1-6 window by window, 7-8 blended. |
-| `keystone_swap` | Window 1's finished first frame is locked into the first slot of every later window. |
-| `back_capstone` | Window 1's finished last single-frame latent is tacked onto the back of every later window. |
-| `finished_handoff` | On: every window renders all the way to the last step, and the next window's overlap is locked to those finished frames. Every window goes back to its `switch_step` snapshot before the blended finish. Costs the last steps once more per window. |
-| `capstone_step` | Steps before the capstone comes in. Keep it below `switch_step` (4 with 6 = on for steps 5-6), or it never comes in. |
 | `fuse_method` | How the blended steps average the windows (pyramid). |
-| `freenoise` | Reuses window 1's noise for every window: more consistent, but motion can repeat. Off gives more variety. |
+| `freenoise` | Reuses window 1's noise for every window: more consistent, but motion can repeat. Off gives more variety. On by default. |
 | `split_conds_to_windows` | Give each window its own prompt (see below). |
-| `detail_latent` | Optional: use this latent's first frame as the keystone instead of window 1's. |
-| `context_noise` | ethanfel's context noise, only while an overlap is locked in: during each window's own steps (1 to `switch_step`), its locked overlap gets part of the current noise, most at the start of the overlap and fading to none at the join. The keystone slot stays clean, the blended steps aren't touched, and the overlap the window before made is kept as it was. Off by default. |
+| `crash_protection` | On by default. Saves the progress after every window to `output/geiru_hybrid_progress/crash_protection.pt` and clears unused GPU memory between windows. If ComfyUI crashes or runs out of memory, press Run again on the same run (same seed, prompts, size, length and settings) and it picks up from the last saved window. The file is deleted when the run finishes. It can't see a changed LoRA, turbo or sampler, so change the seed if you change those after a crash. To keep the finished latent, plug the sampler's output into Motion Context's (or MultiRef's) **Save Latent** node. ComfyUI's own Save Latent can't save H3's video + audio latent. |
+| `detail_latent` | Optional input: use this latent's first frame as the keystone instead of window 1's. |
+| **Advanced** | |
+| `keystone_swap` | Off by default. Window 1's finished first frame is locked into the first slot of every later window. |
+| `keystone_step` | Steps before the keystone is locked in (a late lock, like `capstone_step`). 0 (default) = locked from the first step. 2 with `switch_step` 6 = locked for steps 3-6. |
+| `back_capstone` | Off by default. Window 1's finished last single-frame latent is tacked onto the back of every later window. |
+| `capstone_step` | Steps before the capstone comes in. Keep it below `switch_step` (4 with 6 = on for steps 5-6), or it never comes in. |
+| `context_noise` | Off by default. ethanfel's context noise, only while an overlap is locked in: during each window's own steps (1 to `switch_step`), its locked overlap gets part of the current noise, most at the start of the overlap and fading to none at the join. The keystone slot stays clean, the blended steps aren't touched, and the overlap the window before made is kept as it was. |
 | `context_noise_strength` | How much noise the first overlap latent gets (1 default = as much as the new latents). |
 | `context_noise_fade` | How the context noise fades to clean at the join: **linear** (default, an even fade, best in the [fade sweep](https://github.com/roycho87/NerdNotes/blob/main/20261101/frame0_conclusions.md)), **ease** (drops off faster), or **ethanfel** (his drift_control recipe: full on the overlap, a 4-latent taper to the join, scaled by next/current noise level at every step). |
 | `sound_first` | Off by default. On: renders the sound first on its own (picture at 64x64), then locks it in and renders the picture. |
-| `crash_protection` | On by default. Saves the progress after every window to `output/geiru_hybrid_progress/crash_protection.pt` and clears unused GPU memory between windows. If ComfyUI crashes or runs out of memory, press Run again on the same run (same seed, prompts, size, length and settings) and it picks up from the last saved window. The file is deleted when the run finishes. It can't see a changed LoRA, turbo or sampler, so change the seed if you change those after a crash. To keep the finished latent, plug the sampler's output into Motion Context's (or MultiRef's) **Save Latent** node. ComfyUI's own Save Latent can't save H3's video + audio latent. |
+| `finished_handoff` | Off by default. On: every window renders all the way to the last step, and the next window's overlap is locked to those finished frames. Every window goes back to its `switch_step` snapshot before the blended finish. Costs the last steps once more per window. |
+
+Workflows saved with the older layout still load with every value on the right setting.
 
 **One prompt per window:** make one prompt node per window, join them in order with ComfyUI's **Conditioning Combine** (chain them for more than two), plug the result into the guider, and turn `split_conds_to_windows` on. Each window takes the prompt for the part of the video under its middle, so with as many prompts as windows, window 1 gets prompt 1, window 2 prompt 2, and so on. One prompt for a whole minute makes every window try to do the whole thing, so the motion repeats.
 

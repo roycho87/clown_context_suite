@@ -85,7 +85,8 @@ def _run_id(extra_args, shapes, sigmas, windows, k, h):
             "sigmas": [round(float(x), 5) for x in sigmas], "windows": [list(map(int, w)) for w in windows],
             "k": int(k), "keystone": bool(h.detail_swap), "capstone": bool(h.back_capstone),
             "handoff": bool(getattr(h, "finished_handoff", False)), "noise": float(h.context_noise),
-            "fade": str(h.context_noise_fade)}
+            "fade": str(h.context_noise_fade),
+            **({"keystone_step": int(h.keystone_step)} if int(getattr(h, "keystone_step", 0)) > 0 else {})}
 
 
 def _cpu(t):
@@ -150,6 +151,7 @@ class ClownContextHandler(cw.IndexListContextHandler):
         self.sound_pass = False              # True while the 64x64 sound render runs (plain kijai windows)
         self.back_capstone = False
         self.capstone_step = 4
+        self.keystone_step = 0               # steps before the keystone is locked in (0 = from the first step)
         self.capstone = None                 # window 1's capstone while a later window runs, else None
         self.detail_swap = bool(detail_swap)
         self.detail_latent = detail_latent   # optional [B, C, 1, H, W] (real latent space)
@@ -417,6 +419,22 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
         x0 = unpack(guess["x0"]) if "x0" in guess else None
         return unpack(out * (1.0 - float(sig[-1]))), x0
 
+    def run_win(a, b, wi, state, slot=None, slot_src=None):
+        """Run window wi on steps a+1..b. The keystone (slot) is only locked in from keystone_step on: before that,
+        its slot is treated like the rest of the overlap."""
+        ks = int(getattr(h, "keystone_step", 0))
+        if slot is None or ks <= a:
+            return one_window(sigmas[a:b + 1], wi, state, slot, slot_src)
+        if ks >= b:
+            return one_window(sigmas[a:b + 1], wi, state)
+        out, _ = one_window(sigmas[a:ks + 1], wi, state)
+        mid = [p.clone() for p in state]
+        for mi in range(len(shapes)):
+            sl = _ix(dims[mi], per_window[wi][mi])
+            mid[mi][sl] = out[mi][sl].to(mid[mi].dtype)
+        del out
+        return one_window(sigmas[ks:b + 1], wi, mid, slot, slot_src)
+
     def keep(wi, out, x0):
         for mi in range(len(shapes)):
             new = [i for i in per_window[wi][mi] if i not in done[mi]]
@@ -465,7 +483,8 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
             if wi > 0:
                 if h.detail_swap and key_src is not None and idxs[0] in done[0]:
                     slot = idxs[0]
-                    note += f", keystone in latent {slot}"
+                    note += f", keystone in latent {slot}" + (f" from step {h.keystone_step + 1}"
+                                                                    if h.keystone_step > 0 else "")
                 if h.back_capstone and cap_src is not None:
                     h.capstone = cap_src
                     note += f", capstone on the back from step {h.capstone_step + 1}"
@@ -473,7 +492,7 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
             logging.info(f"[{WHO}] hybrid: window {wi + 1} steps 1-{k}"
                          + (f", {n_pin} overlap latents pinned to the windows before"
                             + (" (finished frames)" if handoff else "") if n_pin else "") + note)
-            out, x0 = one_window(sigmas[0:k + 1], wi, st, slot, key_src)
+            out, x0 = run_win(0, k, wi, st, slot, key_src)
             if handoff and wi < len(windows) - 1:
                 # run this window on to the end from its step-k snapshot, same pins / keystone / capstone; the
                 # finished frames are what the next window's overlap gets pinned to
@@ -483,7 +502,7 @@ def _hybrid(executor, guider, sigmas, extra_args, callback, noise, latent_image,
                 for mi in range(len(shapes)):
                     sl = _ix(dims[mi], per_window[wi][mi])
                     snap[mi][sl] = out[mi][sl].to(snap[mi].dtype)
-                fin, _ = one_window(sigmas[k:], wi, snap, slot, key_src)
+                fin, _ = run_win(k, steps, wi, snap, slot, key_src)
                 if wi == 0:
                     k0 = idxs[0]
                     key_src = detail if detail is not None else fin[0][:, :, k0:k0 + 1].clone()
@@ -648,23 +667,6 @@ class H3ClownHybridWindows:
                 "switch_step": ("INT", {"default": 6, "min": 1, "max": 200,
                                         "tooltip": "Steps each window runs on its own, in order, before everything is "
                                                    "blended. 6 of 8 = steps 1-6 window by window, 7-8 blended."}),
-                "keystone_swap": ("BOOLEAN", {"default": True,
-                                              "tooltip": "Window 1's finished frame 0 (or detail_latent's) is locked into "
-                                                         "the first slot of every later window during its own steps."}),
-                "back_capstone": ("BOOLEAN", {"default": True,
-                                              "tooltip": "Window 1's finished last single-frame latent is tacked onto the "
-                                                         "back of every later window (locked) from capstone_step, and cut "
-                                                         "off again."}),
-                "finished_handoff": ("BOOLEAN", {"default": False,
-                                                 "tooltip": "On: every window is run all the way to the last step, and "
-                                                            "the next window's overlap is locked to those finished frames "
-                                                            "(like context motion). Each window is saved at switch_step "
-                                                            "and goes back to that save before the blended finish. Costs "
-                                                            "the last steps once more per window. Off: the overlap is "
-                                                            "locked to the window before's clean guess at switch_step."}),
-                "capstone_step": ("INT", {"default": 4, "min": 0, "max": 200,
-                                          "tooltip": "Steps before the capstone is tacked on. 4 with switch_step 6 = "
-                                                     "on for steps 5-6."}),
                 "fuse_method": (fuse, {"default": cw.ContextFuseMethods.PYRAMID,
                                        "tooltip": "How the blended steps average the windows."}),
                 "freenoise": ("BOOLEAN", {"default": True}),
@@ -675,25 +677,6 @@ class H3ClownHybridWindows:
             "optional": {
                 "detail_latent": ("LATENT", {"tooltip": "Optional: use this latent's first latent as the keystone "
                                                         "instead of window 1's finished frame 0."}),
-                "sound_first": ("BOOLEAN", {"default": False,
-                                            "tooltip": "Render the sound first on its own (blended windows, picture at "
-                                                       "64x64), then lock it in and render the picture."}),
-                "context_noise": ("BOOLEAN", {"default": False,
-                                              "tooltip": "ethanfel's context noise: during each window's own steps, its "
-                                                         "pinned overlap gets part of the current noise instead of being "
-                                                         "locked fully clean, most at the start of the overlap and fading "
-                                                         "to none at the join, so H3 doesn't copy the overlap so exactly. "
-                                                         "The keystone slot stays clean, and the overlap the windows before "
-                                                         "made is kept as it was."}),
-                "context_noise_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
-                                                     "tooltip": "How much of the current noise the first overlap latent "
-                                                                "gets (1 = the same as the new latents). Fades to 0 at the join."}),
-                "context_noise_fade": (FADES, {"default": "linear",
-                                               "tooltip": "How the context noise fades to clean at the join. linear = an "
-                                                          "even fade (best in testing). ease = drops off faster near the "
-                                                          "start. ethanfel = his drift_control recipe: full on the overlap, "
-                                                          "a 4-latent taper to clean at the join, times next/current noise "
-                                                          "level at every step."}),
                 "crash_protection": ("BOOLEAN", {"default": True,
                                                  "tooltip": "Saves the progress after every window to "
                                                             "output/geiru_hybrid_progress/crash_protection.pt and clears "
@@ -703,13 +686,61 @@ class H3ClownHybridWindows:
                                                             "last saved window. The file is deleted when the run finishes. "
                                                             "It can't see a changed LoRA, turbo or sampler: change the seed "
                                                             "if you change those after a crash."}),
+                # advanced: tucked away until "show advanced inputs" is opened on the node
+                "keystone_swap": ("BOOLEAN", {"default": False,
+                                              "tooltip": "Window 1's finished frame 0 (or detail_latent's) is locked into "
+                                                         "the first slot of every later window during its own steps.",
+                    "advanced": True}),
+                "keystone_step": ("INT", {"default": 0, "min": 0, "max": 200,
+                                          "tooltip": "Steps before the keystone is locked in (late lock). 0 = locked from the first step (the usual keystone). 2 with switch_step 6 = locked for steps 3-6.",
+                    "advanced": True}),
+                "back_capstone": ("BOOLEAN", {"default": False,
+                                              "tooltip": "Window 1's finished last single-frame latent is tacked onto the "
+                                                         "back of every later window (locked) from capstone_step, and cut "
+                                                         "off again.",
+                    "advanced": True}),
+                "capstone_step": ("INT", {"default": 4, "min": 0, "max": 200,
+                                          "tooltip": "Steps before the capstone is tacked on. 4 with switch_step 6 = "
+                                                     "on for steps 5-6.",
+                    "advanced": True}),
+                "context_noise": ("BOOLEAN", {"default": False,
+                                              "tooltip": "ethanfel's context noise: during each window's own steps, its "
+                                                         "pinned overlap gets part of the current noise instead of being "
+                                                         "locked fully clean, most at the start of the overlap and fading "
+                                                         "to none at the join, so H3 doesn't copy the overlap so exactly. "
+                                                         "The keystone slot stays clean, and the overlap the windows before "
+                                                         "made is kept as it was.",
+                    "advanced": True}),
+                "context_noise_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
+                                                     "tooltip": "How much of the current noise the first overlap latent "
+                                                                "gets (1 = the same as the new latents). Fades to 0 at the join.",
+                    "advanced": True}),
+                "context_noise_fade": (FADES, {"default": "linear",
+                                               "tooltip": "How the context noise fades to clean at the join. linear = an "
+                                                          "even fade (best in testing). ease = drops off faster near the "
+                                                          "start. ethanfel = his drift_control recipe: full on the overlap, "
+                                                          "a 4-latent taper to clean at the join, times next/current noise "
+                                                          "level at every step.",
+                    "advanced": True}),
+                "sound_first": ("BOOLEAN", {"default": False,
+                                            "tooltip": "Render the sound first on its own (blended windows, picture at "
+                                                       "64x64), then lock it in and render the picture.",
+                    "advanced": True}),
+                "finished_handoff": ("BOOLEAN", {"default": False,
+                                                 "tooltip": "On: every window is run all the way to the last step, and "
+                                                            "the next window's overlap is locked to those finished frames "
+                                                            "(like context motion). Each window is saved at switch_step "
+                                                            "and goes back to that save before the blended finish. Costs "
+                                                            "the last steps once more per window. Off: the overlap is "
+                                                            "locked to the window before's clean guess at switch_step.",
+                    "advanced": True}),
             },
         }
 
-    def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=True,
-              back_capstone=True, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
+    def patch(self, model, context_length=124, context_overlap=39, switch_step=6, keystone_swap=False,
+              back_capstone=False, capstone_step=4, fuse_method=cw.ContextFuseMethods.PYRAMID, freenoise=True,
               split_conds_to_windows=False, detail_latent=None, finished_handoff=False, sound_first=False,
-              context_noise=False, context_noise_strength=1.0, context_noise_fade="linear",
+              context_noise=False, keystone_step=0, context_noise_strength=1.0, context_noise_fade="linear",
               crash_protection=True, **_old):
         if not _supported(model.model):
             raise RuntimeError(f"{WHO} needs a newer ComfyUI with MiniMax H3 context windows (PR #17425). Update ComfyUI.")
@@ -733,6 +764,7 @@ class H3ClownHybridWindows:
             latent_retain_index_list="", causal_window_fix=False)
         handler.back_capstone = bool(back_capstone)
         handler.capstone_step = int(capstone_step)
+        handler.keystone_step = int(keystone_step)
         handler.switch_step = int(switch_step)
         handler.finished_handoff = bool(finished_handoff)
         handler.context_noise = float(context_noise_strength) if context_noise else 0.0
@@ -748,7 +780,8 @@ class H3ClownHybridWindows:
         m.add_wrapper_with_key(comfy.patcher_extension.WrappersMP.OUTER_SAMPLE, "ClownHybridWindows_outer_sample",
                                _clown_outer_sample)
         print(f"[{WHO}] window {length} latents, overlap {overlap}: steps 1-{switch_step} window by window, then blended"
-              + (", finished handoff" if finished_handoff else "") + (", keystone" if keystone_swap else "")
+              + (", finished handoff" if finished_handoff else "") + ((", keystone" + (f" from step {int(keystone_step) + 1}" if int(keystone_step) > 0 else ""))
+                                                   if keystone_swap else "")
               + (f", capstone from step {int(capstone_step) + 1}" if back_capstone else "")
               + (", sound first" if sound_first else "")
               + (f", context noise {float(context_noise_strength):.2f} {handler.context_noise_fade}"
