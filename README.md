@@ -336,7 +336,7 @@ Late Lock puts the real frame back, so join the clips the normal way (see [Joini
 
 - 1433 frames (60 s) in 8 windows of 226 frames, overlap 39.
 - 8 prompt nodes, one per window, joined in order with **Conditioning Combine**, with `split_conds_to_windows` on.
-- Keystone, capstone (`capstone_step` 4) and `finished_handoff` on, `freenoise` off.
+- Keystone, capstone (`capstone_step` 4) and `finished_handoff` on (in the node's advanced settings; they're off on a fresh node), `freenoise` off.
 - **SAVE LATENT (hybrid windows)** (Motion Context's Save Latent, since ComfyUI's own can't save H3's video + audio latent) saves the finished latent to `output/latents/geiru_hybrid/` as a new numbered file each run. If the decode runs out of memory, load it with Motion Context's **Load Latent** and decode it again (tiled) without sampling.
 
 Load your subject picture into Picture 1 and press ComfyUI's Run. The length and size are on PROMPT 1; if you change the length, the prompts won't line up one per window any more.

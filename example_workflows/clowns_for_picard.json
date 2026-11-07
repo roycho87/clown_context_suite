@@ -1940,6 +1940,13 @@
      "link": 76
     },
     {
+     "localized_name": "detail_latent",
+     "name": "detail_latent",
+     "type": "LATENT",
+     "link": null,
+     "shape": 7
+    },
+    {
      "localized_name": "context_length",
      "name": "context_length",
      "type": "INT",
@@ -1963,43 +1970,6 @@
      "type": "INT",
      "widget": {
       "name": "switch_step"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "keystone_swap",
-     "name": "keystone_swap",
-     "type": "BOOLEAN",
-     "widget": {
-      "name": "keystone_swap"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "back_capstone",
-     "name": "back_capstone",
-     "type": "BOOLEAN",
-     "widget": {
-      "name": "back_capstone"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "finished_handoff",
-     "name": "finished_handoff",
-     "type": "BOOLEAN",
-     "widget": {
-      "name": "finished_handoff"
-     },
-     "link": null,
-     "shape": 7
-    },
-    {
-     "localized_name": "capstone_step",
-     "name": "capstone_step",
-     "type": "INT",
-     "widget": {
-      "name": "capstone_step"
      },
      "link": null
     },
@@ -2031,9 +2001,82 @@
      "link": null
     },
     {
-     "localized_name": "detail_latent",
-     "name": "detail_latent",
-     "type": "LATENT",
+     "localized_name": "crash_protection",
+     "name": "crash_protection",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "crash_protection"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "keystone_swap",
+     "name": "keystone_swap",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keystone_swap"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "keystone_step",
+     "name": "keystone_step",
+     "type": "INT",
+     "widget": {
+      "name": "keystone_step"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "back_capstone",
+     "name": "back_capstone",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "back_capstone"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "capstone_step",
+     "name": "capstone_step",
+     "type": "INT",
+     "widget": {
+      "name": "capstone_step"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "context_noise",
+     "name": "context_noise",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "context_noise"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "context_noise_strength",
+     "name": "context_noise_strength",
+     "type": "FLOAT",
+     "widget": {
+      "name": "context_noise_strength"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "context_noise_fade",
+     "name": "context_noise_fade",
+     "type": "COMBO",
+     "widget": {
+      "name": "context_noise_fade"
+     },
      "link": null,
      "shape": 7
     },
@@ -2043,6 +2086,16 @@
      "type": "BOOLEAN",
      "widget": {
       "name": "sound_first"
+     },
+     "link": null,
+     "shape": 7
+    },
+    {
+     "localized_name": "finished_handoff",
+     "name": "finished_handoff",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "finished_handoff"
      },
      "link": null,
      "shape": 7
@@ -2065,12 +2118,17 @@
     226,
     39,
     6,
-    true,
-    true,
-    true,
-    4,
     "pyramid",
     false,
+    true,
+    true,
+    true,
+    0,
+    true,
+    4,
+    false,
+    1.0,
+    "linear",
     true,
     true
    ]
