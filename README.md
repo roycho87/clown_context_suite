@@ -251,7 +251,11 @@ By eye there's no visible degradation from start to end. It's one render with no
 
 ### Experiment: a talking clown at full steps (16 windows)
 
-*(space for the video)*
+
+
+https://github.com/user-attachments/assets/bd21d8b0-5c07-4d87-be8b-6c8ca5eeb197
+
+
 
 A 2 min 6 s talking video in one render. **Settings used for this video:**
 
