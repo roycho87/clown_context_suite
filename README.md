@@ -249,6 +249,16 @@ An experiment using the anti-degradation features inside context windows, plus c
 
 By eye there's no visible degradation from start to end. It's one render with no cuts and no stitching (the video is compressed for GitHub).
 
+### Experiment: a talking clown at full steps (16 windows)
+
+*(space for the video)*
+
+A 2 min 6 s talking video (3031 frames, 544 × 960) in one render: 16 windows of 226 frames, overlap 39, every window at all 8 steps (`switch_step` 8, `finished_handoff` off), keystone and capstone (`capstone_step` 6), context noise linear 1, with roycho's own recorded voice as the audio.
+
+By eye there's no visible degradation. Measured, the background darkens slowly: about 4% over the seated windows and 12–18% over the standing windows by window 15, with no burn. Full results in [NerdNotes, test 15](https://github.com/roycho87/NerdNotes/blob/main/20261106/talking_clown_hybrid_16win.md).
+
+**Hybrid Windows is not as good as the continuation nodes at preventing degradation, but that is not its purpose.** It's meant for scenes with fast motion that need to be seamless. It's recommended to use it as a hybrid window, with at least two blend steps using `finished_handoff` (for example `switch_step` 6 of 8 with `finished_handoff` on), to get more consistency than standard hybrid windows allow. **These two experiments were tests of extremes,** not something meant to imply the purpose of the node.
+
 Plug the model through it (model in, model out to the guider). It needs a ComfyUI with MiniMax H3 context windows: update ComfyUI if the node is missing.
 
 | Setting | Meaning |
