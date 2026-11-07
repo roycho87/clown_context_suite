@@ -253,7 +253,17 @@ By eye there's no visible degradation from start to end. It's one render with no
 
 *(space for the video)*
 
-A 2 min 6 s talking video (3031 frames, 544 × 960) in one render: 16 windows of 226 frames, overlap 39, every window at all 8 steps (`switch_step` 8, `finished_handoff` off), keystone and capstone (`capstone_step` 6), context noise linear 1, with roycho's own recorded voice as the audio.
+A 2 min 6 s talking video in one render. **Settings used for this video:**
+
+- 3031 frames (2:06) at 24 fps, 544 × 960 (portrait)
+- 16 windows: `context_length` 226, `context_overlap` 39, `split_conds_to_windows` on (one prompt per window)
+- `switch_step` 8 (every window renders all 8 steps on its own, no blended pass), `finished_handoff` off
+- `keystone_swap` on, `back_capstone` on, `capstone_step` 6
+- `context_noise` on, strength 1, fade linear
+- `fuse_method` pyramid, `freenoise` off, `sound_first` off, crash protection on
+- er_sde, beta scheduler, 8 steps, BasicGuider, sigma shift 12 (video) / 3 (audio)
+- Turbo 8-step LoRA and Motion Booster V2 LoRA at 1
+- Audio: roycho's recorded voice, encoded into the latent with a noise mask of 0.5
 
 By eye there's no visible degradation. Measured, the background darkens slowly: about 4% over the seated windows and 12–18% over the standing windows by window 15, with no burn. Full results in [NerdNotes, test 15](https://github.com/roycho87/NerdNotes/blob/main/20261106/talking_clown_hybrid_16win.md).
 
